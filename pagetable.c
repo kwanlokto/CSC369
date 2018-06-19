@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <assert.h>:
 #include <string.h> 
 #include "sim.h"
 #include "pagetable.h"
@@ -39,6 +39,8 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// All frames were in use, so victim frame must hold some page
 		// Write victim page to swap, if needed, and update pagetable
 		// IMPLEMENTATION NEEDED
+		swap_pageout(frame, p->swap_off);
+		p->swap_off = NULL;
 
 
 	}
@@ -140,16 +142,39 @@ char *find_physpage(addr_t vaddr, char type) {
 
 
 	// Use vaddr to get index into 2nd-level page table and initialize 'p'
-
+	p = pgdir[vaddr].pde;
 
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
+	if (p->frame & 1  == 1) { //valid
+		hit_count++;
+		ref_count++;
+	}
+	else if ((p->frame >> 3) & 1 == 1) { //on swap
+		
+		swap_pagein(p->frame, p->swap_off);
+		allocate_frame(p);
+		miss_count++;
+		ref_count++;
+	}
+	else {
+		init_frame(p->frame, vaddr);
+		ref_count++;
+		miss_count++;
+		
+	}
 
 
 
 	// Make sure that p is marked valid and referenced. Also mark it
 	// dirty if the access type indicates that the page will be written to.
+	p->frame = p->frame | 1;
+	p->frame = p->frame | 4;
 
+
+	if (type == 'S' || type == 'M') {
+		p->frame = p->frame | 2;
+	}
 
 
 	// Call replacement algorithm's ref_fcn for this page
