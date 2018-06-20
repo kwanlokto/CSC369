@@ -41,6 +41,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// IMPLEMENTATION NEEDED
 		swap_pageout(frame, p->swap_off);
 		p->swap_off = NULL;
+		p->frame = NULL;
 
 
 	}
