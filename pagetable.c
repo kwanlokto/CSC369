@@ -216,7 +216,11 @@ char *find_physpage(addr_t vaddr, char type) {
 
 
 	// Use vaddr to get index into 2nd-level page table and initialize 'p'
-	p = pgdir[idx].pde;
+
+	// Checks if the second level page table is valid
+	if (!(pgdir[i].pde & PG_VALID)) {
+		pgdir[idx] = init_second_level();
+	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
 
 
