@@ -234,7 +234,32 @@ char *find_physpage(addr_t vaddr, char type) {
 			swap_pagein(frame, p->swap_off);
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-			
+
+
+			// Adds the new page to the swap space
+			unsigned int bit = 1;
+			while (bit < swapsize && bitmap_isset(swapmap, bit) == 1) {
+				bit++;
+			}
+			if (counter == swapsize) { //If not space in swap space
+				fprintf(stderr, "No more space in swap space");
+				exit(1);
+			}
+			else { //at index counter there is space in the swapspace
+				bitmap_mark(swapmap, bit); //set that bit to one
+				int location = swap_pageout(frame, counter);
+				if (location == INVALID_SWAP) {
+					pfrintf(stderr, "Failing to write page on disk that doesn't exist");
+					exit(1);
+				}
+				p->swap_off = location;
+			}
+
+			p->frame = p->frame | PG_ONSWAP;
+		}
+
+		tableEntry->frame = tableEntry & ~PG_DIRTY; //set it to clean
+		evict_dirty_count++;
 		}
 		// pgtbl_entry_t * swap_page = NULL;
 		// int frame = p[tblIdx].frame >> PAGE_SHIFT;
