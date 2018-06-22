@@ -219,23 +219,32 @@ char *find_physpage(addr_t vaddr, char type) {
 		pgdir[idx] = init_second_level();
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-	p = pgdir[idx].pde;
+	pgtbl_entry_t * secondLevel = pgdir[idx].pde;
+	p = &(secondLevel[tblIdx]);
+
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
-	if (p[tblIdx].frame & PG_VALID) { //valid
+	if (p -> frame & PG_VALID) { //valid
 		hit_count++;
 		ref_count++;
 	}
 	else { //invalid
+		int frame = allocate_frame(p);
+		if (p->frame & ONSWAP) { // On swap
+			swap_pagein(frame, p->swap_off);
+		} else { // Not on swap meaning that it is new
+			init_frame(frame, vaddr);
+			
+		}
 		// pgtbl_entry_t * swap_page = NULL;
 		// int frame = p[tblIdx].frame >> PAGE_SHIFT;
 		// if ((p[tblIdx].frame >> 3) & 1 == 1) { //invalid and on swap
 		// 	swap_pagein(swap_page, p[tblIdx].swap_off);
 		// } else {
 		//
-		// 	init_frame(frame, vaddr);
+		//
 		// }
-		allocate_frame(p);
+
 		miss_count++;
 		ref_count++;
 	}
