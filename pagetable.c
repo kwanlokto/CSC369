@@ -33,6 +33,9 @@ int allocate_frame(pgtbl_entry_t *p) {
 		}
 	}
 	if(frame == -1) { // Didn't find a free page.
+		if ()
+
+
 		// Call replacement algorithm's evict function to select victim
 		frame = evict_fcn();
 
@@ -41,7 +44,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// IMPLEMENTATION NEEDED
 
 		//assumed that coremap[frame] points to pagetable entry of frame that is going to be evicted
-		~PG_VALID | (coremap[frame])->frame;
+		(coremap[frame])->frame = ~PG_VALID & (coremap[frame])->frame;
 		if (p->swap_off != INVALID_SWAP) {
 			swap_pageout(frame, p->swap_off);
 			p->swap_off = INVALID_SWAP;
