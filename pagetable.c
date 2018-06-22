@@ -85,7 +85,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 				tableEntry->frame = tableEntry->frame | PG_ONSWAP;
 			}
 
-			tableEntry->frame = tableEntry & ~PG_DIRTY //set it to clean
+			tableEntry->frame = tableEntry & ~PG_DIRTY; //set it to clean
 			evict_dirty_count++;
 		}
 
@@ -113,9 +113,6 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// 		p->swap_off = NULL;
 		// 	}
 		// }
-
-		evict_clean_count++;
-
 
 	}
 
@@ -207,7 +204,7 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
-	pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
+	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
 
 	// IMPLEMENTATION NEEDED
@@ -222,10 +219,10 @@ char *find_physpage(addr_t vaddr, char type) {
 		pgdir[idx] = init_second_level();
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-
+	p = pgdir[idx].pde;
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
-	if (p[tblIdx].frame & 1  == 1) { //valid
+	if (p[tblIdx].frame & PG_VALID) { //valid
 		hit_count++;
 		ref_count++;
 	}
@@ -247,12 +244,12 @@ char *find_physpage(addr_t vaddr, char type) {
 
 	// Make sure that p is marked valid and referenced. Also mark it
 	// dirty if the access type indicates that the page will be written to.
-	p->frame = p->frame | 1;
-	p->frame = p->frame | 4;
+	p->frame = p->frame | PG_VALID;
+	p->frame = p->frame | PG_REF;
 
 
 	if (type == 'S' || type == 'M') {
-		p->frame = p->frame | 2;
+		p->frame = p->frame | PG_DIRTY;
 	}
 
 
