@@ -41,11 +41,10 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// IMPLEMENTATION NEEDED
 
 		//assumed that coremap[frame] points to pagetable entry of frame that is going to be evicted
-		(coremap[frame])->frame = (coremap[frame])->frame >> 1 ;
-		(coremap[frame])->frame = (coremap[frame])->frame << 1 ;
-		if (p->swap_off != NULL) {
+		~PG_VALID | (coremap[frame])->frame;
+		if (p->swap_off != INVALID_SWAP) {
 			swap_pageout(frame, p->swap_off);
-			p->swap_off = NULL;
+			p->swap_off = INVALID_SWAP;
 		}
 		else {
 			int counter = 0;
