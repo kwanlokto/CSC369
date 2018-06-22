@@ -40,17 +40,26 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// Write victim page to swap, if needed, and update pagetable
 		// IMPLEMENTATION NEEDED
 
-		(coremap[frame])->frame = (coremap[frame])->frame >> 1 ; //assumed that coremap[frame] points to pagetable entry of frame that is going to be evicted
+		//assumed that coremap[frame] points to pagetable entry of frame that is going to be evicted
+		(coremap[frame])->frame = (coremap[frame])->frame >> 1 ;
 		(coremap[frame])->frame = (coremap[frame])->frame << 1 ;
 		if (p->swap_off != NULL) {
 			swap_pageout(frame, p->swap_off);
 			p->swap_off = NULL;
 		}
 		else {
-
+			int counter = 0;
+			while (counter < swapsize && bitmap_isset(swapmap, counter) == 1) {
+				counter++;
+			}
+			if (counter == swapsize) {
+				fprintf(stderr, "No more space in swap space");
+				exit(1); // not sure what to do if no space
+			} else { //at index counter there is space in the swapspace
+				swap_pageout(frame,counter);
+				p->swap_off = NULL;
+			}
 		}
-
-
 
 		evict_clean_count++;
 
@@ -164,11 +173,12 @@ char *find_physpage(addr_t vaddr, char type) {
 		ref_count++;
 	}
 	else { //invalid
+		// pgtbl_entry_t * swap_page = NULL;
 		// int frame = p[tblIdx].frame >> PAGE_SHIFT;
 		// if ((p[tblIdx].frame >> 3) & 1 == 1) { //invalid and on swap
-		// 	swap_pagein(frame, p[tblIdx].swap_off);
+		// 	swap_pagein(swap_page, p[tblIdx].swap_off);
 		// } else {
-
+		//
 		// 	init_frame(frame, vaddr);
 		// }
 		allocate_frame(p);
