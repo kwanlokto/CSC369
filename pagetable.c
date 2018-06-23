@@ -67,31 +67,10 @@ int allocate_frame(pgtbl_entry_t *p) {
 			evict_clean_count++;
 		}
 
-
-		// // Only need to evict if it is dirty
-		// if (coremap[frame]->swap_off != INVALID_SWAP) {
-		//
-		// 	swap_pageout(frame, p->swap_off);
-		// 	coremap[frame]->swap_off = INVALID_SWAP;
-		// }
-		// else {
-		// 	int counter = 0;
-		// 	while (counter < swapsize && bitmap_isset(swapmap, counter) == 1) {
-		// 		counter++;
-		// 	}
-		// 	if (counter == swapsize) {
-		// 		fprintf(stderr, "No more space in swap space");
-		// 		exit(1); // not sure what to do if no space
-		// 	} else { //at index counter there is space in the swapspace
-		// 		swap_pageout(frame,counter);
-		// 		p->swap_off = NULL;
-		// 	}
-		// }
-
 	}
 	unsigned int temp = frame << PAGE_SHIFT;
-	p->frame = (p->frame << PAGE_SHIFT) >> PAGE_SHIFT;
-	p->frame = temp | p->frame ; 
+	p->frame = (p->frame << 20) >> 20;
+	p->frame = temp | p->frame ;
 
 
 	// Record information for virtual page that will now be stored in frame
