@@ -58,7 +58,6 @@ int allocate_frame(pgtbl_entry_t *p) {
 				pfrintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
-			
 
 			tableEntry->frame = tableEntry & ~PG_DIRTY; //set it to clean
 			evict_dirty_count++;
@@ -90,6 +89,10 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// }
 
 	}
+	unsigned int temp = frame << PAGE_SHIFT;
+	p->frame = (p->frame << PAGE_SHIFT) >> PAGE_SHIFT;
+	p->frame = temp | p->frame ; 
+
 
 	// Record information for virtual page that will now be stored in frame
 	coremap[frame].in_use = 1;
@@ -210,7 +213,6 @@ char *find_physpage(addr_t vaddr, char type) {
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
 
-
 			// Adds the new page to the swap space
 			unsigned int bit = 1;
 			while (bit < swapsize && bitmap_isset(swapmap, bit) == 1) {
@@ -232,15 +234,6 @@ char *find_physpage(addr_t vaddr, char type) {
 
 			p->frame = p->frame | PG_ONSWAP;
 		}
-
-		// pgtbl_entry_t * swap_page = NULL;
-		// int frame = p[tblIdx].frame >> PAGE_SHIFT;
-		// if ((p[tblIdx].frame >> 3) & 1 == 1) { //invalid and on swap
-		// 	swap_pagein(swap_page, p[tblIdx].swap_off);
-		// } else {
-		//
-		//
-		// }
 
 		miss_count++;
 		ref_count++;
