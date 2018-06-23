@@ -54,33 +54,11 @@ int allocate_frame(pgtbl_entry_t *p) {
 		if (tableEntry->frame & PG_DIRTY) { //if it is dirty
 
 			// If it is on the swap
-			if (tableEntry->frame & PG_ONSWAP) {
-				if (swap_pageout(frame, tableEntry->frame) == INVALID_SWAP) {
-					pfrintf(stderr, "Failing to write modified page");
-					exit(1); //fails
-				}
+			if (swap_pageout(frame, tableEntry->frame) == INVALID_SWAP) {
+				pfrintf(stderr, "Failing to write modified page");
+				exit(1); //fails
 			}
-
-			// If it is not on the swap
-			else {
-				int counter = 0;
-				while (counter < swapsize && bitmap_isset(swapmap, counter) == 1) {
-					counter++;
-				}
-				if (counter == swapsize) {
-					fprintf(stderr, "No more space in swap space");
-					exit(1); // not sure what to do if no space
-				} else { //at index counter there is space in the swapspace
-					int location = swap_pageout(frame, counter);
-					if (location == INVALID_SWAP) {
-						pfrintf(stderr, "Failing to write page on disk that doesn't exist");
-						exit(1); //fails
-					}
-					tableEntry->swap_off = location;
-				}
-
-				tableEntry->frame = tableEntry->frame | PG_ONSWAP;
-			}
+			
 
 			tableEntry->frame = tableEntry & ~PG_DIRTY; //set it to clean
 			evict_dirty_count++;
@@ -255,9 +233,6 @@ char *find_physpage(addr_t vaddr, char type) {
 			p->frame = p->frame | PG_ONSWAP;
 		}
 
-		tableEntry->frame = tableEntry & ~PG_DIRTY; //set it to clean
-		evict_dirty_count++;
-		}
 		// pgtbl_entry_t * swap_page = NULL;
 		// int frame = p[tblIdx].frame >> PAGE_SHIFT;
 		// if ((p[tblIdx].frame >> 3) & 1 == 1) { //invalid and on swap
