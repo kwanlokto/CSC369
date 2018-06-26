@@ -28,6 +28,8 @@ int lru_evict() {
 	coremap[frame].stack_ptr = NULL;
 	if (bottom != NULL) {
 		bottom -> next = NULL;
+	} else {
+		top = NULL;
 	}
 	return frame;
 }
@@ -58,6 +60,8 @@ void lru_ref(pgtbl_entry_t *p) {
 	ptr -> frame_number = frame;
 	if (top != NULL) {
 		top -> previous = ptr;
+	} else {
+		bottom = NULL;
 	}
 	top = ptr;
 	if (top -> next == NULL) {
