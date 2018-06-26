@@ -58,6 +58,7 @@ void lru_ref(pgtbl_entry_t *p) {
 	ptr -> frame_number = frame;
 	if (top != NULL) {
 		top -> previous = ptr;
+	}
 	top = ptr;
 	if (top -> next == NULL) {
 		bottom = top;
