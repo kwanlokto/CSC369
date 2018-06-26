@@ -42,8 +42,12 @@ void lru_ref(pgtbl_entry_t *p) {
 	}
 	else {
 		ptr = coremap[frame].stack_ptr;
-		(ptr -> previous) -> next = ptr -> next;
-		(ptr -> next) -> previous = ptr -> previous;
+		if (ptr -> previous != NULL) {
+			(ptr -> previous) -> next = ptr -> next;
+		}
+		if (ptr -> next != NULL) {
+			(ptr -> next) -> previous = ptr -> previous;
+		}
 	}
 	ptr -> next = top;
 	ptr -> previous = NULL;
