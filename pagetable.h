@@ -75,7 +75,7 @@ struct linked_list {  //Added linked list (stack) struct for LRU algo
 	struct linked_list *next;
 	int frame_number;
 	
-}
+};
 
 
 /* The coremap holds information about physical memory.
