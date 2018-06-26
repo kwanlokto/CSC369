@@ -51,16 +51,21 @@ void lru_ref(pgtbl_entry_t *p) {
 			(ptr -> next) -> previous = ptr -> previous;
 		}
 	}
-	printf("passed \n");
+	printf("1.passed \n");
 	ptr -> next = top;
+	printf("2.passed \n");
 	ptr -> previous = NULL;
+	printf("3.passed \n");
 	ptr -> frame_number = frame;
+	printf("4.passed \n");
 	top -> previous = ptr;
+	printf("5.passed \n");
 	top = ptr;
-
+	printf("6.passed \n");
 	if (top -> next == NULL) {
 		bottom = top;
 	}
+	printf("7.passed \n");
 	return;
 }
 
