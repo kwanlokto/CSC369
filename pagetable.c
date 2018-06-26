@@ -191,7 +191,7 @@ char *find_physpage(addr_t vaddr, char type) {
 			swap_pagein(frame, p->swap_off);
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-			
+
 			// // Adds the new page to the swap space
 			// unsigned int bit = 1;
 			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
@@ -213,7 +213,7 @@ char *find_physpage(addr_t vaddr, char type) {
 			//
 			// p->frame = p->frame | PG_ONSWAP;
 		}
-
+		p->frame = p->frame | PG_VALID;
 		miss_count++;
 		ref_count++;
 	}
