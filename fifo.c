@@ -36,13 +36,13 @@ int fifo_evict() {
  */
 void fifo_ref(pgtbl_entry_t *p) {
 	if (head == NULL) {
-		head = malloc(sizeof(struct linked_list))
+		head = malloc(sizeof(struct linked_list));
 		head -> frame_number = (p -> frame) >> PAGE_SHIFT;
 		head -> next = NULL;
 		last = head;
 	} else {
 		last = last -> next;
-		last = malloc(sizeof(struct linked_list))
+		last = malloc(sizeof(struct linked_list));
 		last -> frame_number = (p -> frame) >> PAGE_SHIFT;
 		last -> next = NULL;
 	}
