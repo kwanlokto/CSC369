@@ -19,7 +19,7 @@ char *tracefile = NULL;
  * call to select the victim page.
  */
 struct functions algs[] = {
-	{"rand", rand_init, rand_ref, rand_evict}, 
+	{"rand", rand_init, rand_ref, rand_evict},
 	{"lru", lru_init, lru_ref, lru_evict},
 	{"fifo", fifo_init, fifo_ref, fifo_evict},
 	{"clock",clock_init, clock_ref, clock_evict},
@@ -44,7 +44,7 @@ int (*evict_fcn)() = NULL;
  *
  * We then check that the memory has the expected content (just a copy of the
  * virtual address) and, in case of a write reference, increment the version
- * counter. 
+ * counter.
  */
 void access_mem(char type, addr_t vaddr) {
 	char *memptr = find_physpage(vaddr, type);
@@ -54,7 +54,7 @@ void access_mem(char type, addr_t vaddr) {
 	if (*checkaddr != vaddr) {
 		fprintf(stderr,"Error, simulated page returned by pagetable lookup doese not have expected value.\n");
 	}
-	
+
 	if (type == 'S' || type == 'M') {
 		// write access to page, increment version number
 		(*versionptr)++;
@@ -85,7 +85,7 @@ void replay_trace(FILE *infp) {
 
 int main(int argc, char *argv[]) {
 	int opt;
-	unsigned swapsize;
+	unsigned swapsize = 4096;
 	FILE *tfp = stdin;
 	char *replacement_alg = NULL;
 	char *usage = "USAGE: sim -f tracefile -m memorysize -s swapsize -a algorithm\n";
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 	// Initialize main data structures for simulation.
 	// This happens before calling the replacement algorithm init function
 	// so that the init_fcn can refer to the coremap if needed.
-	coremap = malloc(memsize * sizeof(struct frame));
+	coremap = calloc(memsize, sizeof(struct frame));
 	physmem = malloc(memsize * SIMPAGESIZE);
 	swap_init(swapsize);
 	init_pagetable();
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		if(evict_fcn == NULL) {
-			fprintf(stderr, "Error: invalid replacement algorithm - %s\n", 
+			fprintf(stderr, "Error: invalid replacement algorithm - %s\n",
 					replacement_alg);
 			exit(1);
 		}
@@ -157,10 +157,10 @@ int main(int argc, char *argv[]) {
 	printf("Hit count: %d\n", hit_count);
 	printf("Miss count: %d\n", miss_count);
 	printf("Clean evictions: %d\n",evict_clean_count);
-	printf("Dirty evictions: %d\n",evict_dirty_count); 
+	printf("Dirty evictions: %d\n",evict_dirty_count);
 	printf("Total references : %d\n", ref_count);
 	printf("Hit rate: %.4f\n", (double)hit_count/ref_count * 100);
 	printf("Miss rate: %.4f\n", (double)miss_count/ref_count *100);
-		
+
 	return(0);
 }
