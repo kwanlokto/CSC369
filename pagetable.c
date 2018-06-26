@@ -213,7 +213,6 @@ char *find_physpage(addr_t vaddr, char type) {
 			//
 			// p->frame = p->frame | PG_ONSWAP;
 		}
-		p->frame = p->frame | PG_VALID;
 		miss_count++;
 		ref_count++;
 	}
