@@ -70,7 +70,7 @@ struct frame {
 	struct linked_list *stack_ptr; //Added linked list (stack) struct for LRU algo
 };
 
-struct linked_list {
+struct linked_list {  //Added linked list (stack) struct for LRU algo
 	struct linked_list *previous;
 	struct linked_list *next;
 	int frame_number;
