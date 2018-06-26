@@ -54,6 +54,7 @@ typedef struct {
 typedef struct { 
 	unsigned int frame; // if valid bit == 1, physical frame holding vpage
 	off_t swap_off;       // offset in swap file of vpage, if any
+
 } pgtbl_entry_t;    
 
 extern void init_pagetable();
@@ -65,7 +66,17 @@ struct frame {
 	char in_use;       // True if frame is allocated, False if frame is free
 	pgtbl_entry_t *pte;// Pointer back to pagetable entry (pte) for page
 	                   // stored in this frame
+
+	struct linked_list *stack_ptr; //Added linked list (stack) struct for LRU algo
 };
+
+struct linked_list {
+	struct linked_list *previous;
+	struct linked_list *next;
+	int frame_number;
+	
+}
+
 
 /* The coremap holds information about physical memory.
  * The index into coremap is the physical page frame number stored

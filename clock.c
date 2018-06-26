@@ -21,11 +21,11 @@ int counter;
 
 int clock_evict() {
 	while (counter < memsize) {
-		if (!(coremap[i].pte->frame & PG_REF)) {
-                        return i;
+		if (!(coremap[counter].pte->frame & PG_REF)) {
+                        return counter;
                 }
 		else {
-			clock_ref(coremap[i].pte);
+			coremap[counter].pte->frame = coremap[counter].pte->frame & ~PG_REF;
 		}
 		if (counter == memsize - 1) {
 			counter = 0;
