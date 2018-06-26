@@ -54,7 +54,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 		if (tableEntry->frame & PG_DIRTY) { //if it is dirty
 
 			// If it is on the swap
-			if (swap_pageout(frame, tableEntry->frame) == INVALID_SWAP) {
+			if (swap_pageout(frame, tableEntry->swap_off) == INVALID_SWAP) {
 				fprintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
@@ -191,27 +191,27 @@ char *find_physpage(addr_t vaddr, char type) {
 			swap_pagein(frame, p->swap_off);
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-
-			// Adds the new page to the swap space
-			unsigned int bit = 1;
-			while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
-				bit++;
-			}
-			if (bit == swapmap->nbits) { //If not space in swap space
-				fprintf(stderr, "No more space in swap space");
-				exit(1);
-			}
-			else { //at index bit there is space in the swapspace
-				bitmap_mark(swapmap, bit); //set that bit to one
-				int location = swap_pageout(frame, bit);
-				if (location == INVALID_SWAP) {
-					pfrintf(stderr, "Failing to write page on disk that doesn't exist");
-					exit(1);
-				}
-				p->swap_off = location;
-			}
-
-			p->frame = p->frame | PG_ONSWAP;
+			
+			// // Adds the new page to the swap space
+			// unsigned int bit = 1;
+			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
+			// 	bit++;
+			// }
+			// if (bit == swapmap->nbits) { //If not space in swap space
+			// 	fprintf(stderr, "No more space in swap space");
+			// 	exit(1);
+			// }
+			// else { //at index bit there is space in the swapspace
+			// 	bitmap_mark(swapmap, bit); //set that bit to one
+			// 	int location = swap_pageout(frame, bit);
+			// 	if (location == INVALID_SWAP) {
+			// 		pfrintf(stderr, "Failing to write page on disk that doesn't exist");
+			// 		exit(1);
+			// 	}
+			// 	p->swap_off = location;
+			// }
+			//
+			// p->frame = p->frame | PG_ONSWAP;
 		}
 
 		miss_count++;
