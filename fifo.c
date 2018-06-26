@@ -25,7 +25,7 @@ int fifo_evict() {
 		last = NULL;
 	}
 	free(head);
-	int evictFrame = head -> frameNumber;
+	int evictFrame = head -> frame_number;
 	head = head -> next;
 	return evictFrame;
 }
@@ -37,13 +37,13 @@ int fifo_evict() {
 void fifo_ref(pgtbl_entry_t *p) {
 	if (head == NULL) {
 		head = malloc(sizeof(struct linked_list))
-		head -> frameNumber = (p -> frame) >> PAGE_SHIFT;
+		head -> frame_number = (p -> frame) >> PAGE_SHIFT;
 		head -> next = NULL;
 		last = head;
 	} else {
 		last = last -> next;
 		last = malloc(sizeof(struct linked_list))
-		last -> frameNumber = (p -> frame) >> PAGE_SHIFT;
+		last -> frame_number = (p -> frame) >> PAGE_SHIFT;
 		last -> next = NULL;
 	}
 	return;
