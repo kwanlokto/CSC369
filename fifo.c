@@ -12,23 +12,21 @@ extern int debug;
 
 extern struct frame *coremap;
 
-struct queue {
-	int frameNumber;
-	struct queue *next;
-};
 
-struct queue * Q;
-struct queue * last;
+
+struct linked_list * head;
+struct linked_list * last;
 /* Page to evict is chosen using the fifo algorithm.
  * Returns the page frame number (which is also the index in the coremap)
  * for the page that is to be evicted.
  */
 int fifo_evict() {
-	if (Q == last) {
+	if (head == last) {
 		last = NULL;
 	}
-	int evictFrame = Q -> frameNumber;
-	Q = Q -> next;
+	free(head);
+	int evictFrame = head -> frameNumber;
+	head = head -> next;
 	return evictFrame;
 }
 
@@ -37,12 +35,14 @@ int fifo_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void fifo_ref(pgtbl_entry_t *p) {
-	if (Q == NULL) {
-		Q -> frameNumber = (p -> frame) << PAGE_SHIFT;
-		Q -> next = NULL;
-		last = Q;
+	if (head == NULL) {
+		head = malloc(sizeof(struct linked_list))
+		head -> frameNumber = (p -> frame) << PAGE_SHIFT;
+		head -> next = NULL;
+		last = head;
 	} else {
 		last = last -> next;
+		last = malloc(sizeof(struct linked_list))
 		last -> frameNumber = (p -> frame) << PAGE_SHIFT;
 		last -> next = NULL;
 	}
@@ -53,6 +53,6 @@ void fifo_ref(pgtbl_entry_t *p) {
  * replacement algorithm
  */
 void fifo_init() {
-	Q = NULL;
+	head = NULL;
 	last = NULL;
 }
