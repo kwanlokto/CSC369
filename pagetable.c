@@ -68,7 +68,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 		}
 
 	}
-	unsigned int temp = frame >> PAGE_SHIFT;
+	unsigned int temp = frame << PAGE_SHIFT;
 	p->frame = (p->frame << 20) >> 20;
 	p->frame = temp | p->frame ;
 
