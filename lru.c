@@ -22,9 +22,11 @@ struct linked_list * bottom;
 
 int lru_evict() {
 	int frame = bottom -> frame_number;
+	printf("evict %d\n", frame);
 	bottom = bottom -> previous;
 	free(bottom -> next);
 	coremap[frame].stack_ptr = NULL;
+	bottom -> next = NULL;
 	return frame;
 }
 
