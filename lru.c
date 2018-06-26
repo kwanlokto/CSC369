@@ -34,14 +34,15 @@ int lru_evict() {
  */
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
+	struct linked_list * ptr;
 	if (coremap[frame].stack_ptr == NULL) {
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
-		struct linked_list * ptr = coremap[frame].stack_ptr;
+		ptr = coremap[frame].stack_ptr;
 	}
 	else {
-		struct linked_list * ptr = coremap[frame].stack_ptr;
+		ptr = coremap[frame].stack_ptr;
 		(ptr -> previous) -> next = ptr -> next;
-		(ptr -> next) -> previous = ptr -> previous
+		(ptr -> next) -> previous = ptr -> previous;
 	}
 	ptr -> next = top;
 	ptr -> previous = NULL;
