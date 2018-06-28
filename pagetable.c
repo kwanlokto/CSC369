@@ -75,6 +75,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 	p->frame = temp | p->frame ;
 
 
+
 	// Record information for virtual page that will now be stored in frame
 	coremap[frame].in_use = 1;
 	coremap[frame].pte = p;
@@ -171,7 +172,8 @@ char *find_physpage(addr_t vaddr, char type) {
 
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
-	(void)idx; // To keep compiler happy - remove when you have a real use.
+	
+	//(void)idx; // To keep compiler happy - remove when you have a real use.
 
 
 	// Use vaddr to get index into 2nd-level page table and initialize 'p'
