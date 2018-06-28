@@ -49,17 +49,19 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// What does coremap[frame].pte point to?
 		pgtbl_entry_t * tableEntry = (coremap[frame]).pte;
 
-		tableEntry->frame = ~PG_VALID & tableEntry->frame;
+		tableEntry->frame = tableEntry->frame & (~PG_VALID);
 
 		if (tableEntry->frame & PG_DIRTY) { //if it is dirty
-
+			int location;
 			// If it is on the swap
-			if (swap_pageout(frame, tableEntry->swap_off) == INVALID_SWAP) {
+			if ((location = swap_pageout(frame, tableEntry->swap_off)) == INVALID_SWAP) {
 				fprintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
+			printf("SWAP ------ expected: %d and actual: %d\n", tableEntry->swap_off, location);
+			tableEntry->swap_off = location;
 
-			tableEntry->frame = tableEntry->frame & ~PG_DIRTY; //set it to clean
+			tableEntry->frame = tableEntry->frame & (~PG_DIRTY); //set it to clean
 			evict_dirty_count++;
 		}
 
@@ -161,6 +163,9 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
+	static int counter = 0;
+	counter++;
+	printf("%d. Vaddr %lu\n", counter, vaddr);
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
 
@@ -186,12 +191,14 @@ char *find_physpage(addr_t vaddr, char type) {
 		ref_count++;
 	}
 	else { //invalid
+
 		int frame = allocate_frame(p);
 		if (p->frame & PG_ONSWAP) { // On swap
 			swap_pagein(frame, p->swap_off);
+			p->frame = p->frame & (~PG_DIRTY);
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-
+			printf("create new frame\n");
 			// // Adds the new page to the swap space
 			// unsigned int bit = 1;
 			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
@@ -211,7 +218,8 @@ char *find_physpage(addr_t vaddr, char type) {
 			// 	p->swap_off = location;
 			// }
 			//
-			// p->frame = p->frame | PG_ONSWAP;
+			p->frame = p->frame | PG_DIRTY; //want to write it to the swap
+			p->frame = p->frame | PG_ONSWAP;
 		}
 		miss_count++;
 		ref_count++;
