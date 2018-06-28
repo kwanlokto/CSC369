@@ -58,7 +58,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 				fprintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
-			printf("SWAP ------ expected: %d and actual: %d\n", tableEntry->swap_off, location);
+			//printf("SWAP ------ expected: %d and actual: %d\n", tableEntry->swap_off, location);
 			tableEntry->swap_off = location;
 
 			tableEntry->frame = tableEntry->frame & (~PG_DIRTY); //set it to clean
@@ -165,7 +165,7 @@ void init_frame(int frame, addr_t vaddr) {
 char *find_physpage(addr_t vaddr, char type) {
 	static int counter = 0;
 	counter++;
-	printf("%d. Vaddr %lu\n", counter, vaddr);
+	//printf("%d. Vaddr %lu\n", counter, vaddr);
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
 
@@ -198,7 +198,7 @@ char *find_physpage(addr_t vaddr, char type) {
 			p->frame = p->frame & (~PG_DIRTY);
 		} else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-			printf("create new frame\n");
+			//printf("create new frame\n");
 			// // Adds the new page to the swap space
 			// unsigned int bit = 1;
 			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
