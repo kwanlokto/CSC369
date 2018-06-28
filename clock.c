@@ -20,18 +20,14 @@ int counter;
  */
 
 int clock_evict() {
-	while (counter < memsize) {
-		if (!(coremap[counter].pte->frame & PG_REF)) {
-                        return counter;
-                }
-		else {
-			coremap[counter].pte->frame = coremap[counter].pte->frame & ~PG_REF;
-		}
+	while (coremap[counter].pte->frame & PG_REF) {
+		coremap[counter].pte->frame = coremap[counter].pte->frame & ~PG_REF;
 		if (counter == memsize - 1) {
-			counter = 0;
+			counter = -1;
 		}
+		counter++;
 	}
-	return 0;
+	return counter;
 }
 
 /* This function is called on each access to a page to update any information
@@ -44,7 +40,7 @@ void clock_ref(pgtbl_entry_t *p) {
 }
 
 /* Initialize any data structures needed for this replacement
- * algorithm. 
+ * algorithm.
  */
 void clock_init() {
 	counter = 0;
