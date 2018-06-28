@@ -22,7 +22,7 @@ struct linked_list * bottom;
 
 int lru_evict() {
 	int frame = bottom -> frame_number;
-	//printf("evict %d\n", frame);
+	printf("evict %d\n", frame);
 	bottom = bottom -> previous;
 
 	coremap[frame].stack_ptr = NULL;
@@ -41,7 +41,7 @@ int lru_evict() {
  */
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
-	//printf("reference %d\n", frame);
+	printf("reference %d\n", frame);
 	struct linked_list * ptr;
 	if (coremap[frame].stack_ptr == NULL) {
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
