@@ -37,10 +37,9 @@ int lru_evict() {
 }
 
 
-void add_to_top(struct linked_list * ptr, int frame) {
+void add_to_top(struct linked_list * ptr) {
 	ptr -> next = top;
 	ptr -> previous = NULL;
-	ptr -> frame_number = frame;
 	if (top != NULL) {
 		top -> previous = ptr;
 	}
@@ -65,17 +64,18 @@ void lru_ref(pgtbl_entry_t *p) {
 
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
 		ptr = coremap[frame].stack_ptr;
-		add_to_top(ptr, frame);
+		ptr -> frame = frame;
+		add_to_top(ptr);
 		//printf("empty_done!\n");
 	}
 	else {
 		ptr = coremap[frame].stack_ptr;
 		if (ptr -> previous != NULL && ptr -> next != NULL) { // case in the middle
 			//printf("middle\n");
-
+			
 			(ptr -> previous) -> next = ptr -> next;
 			(ptr -> next) -> previous = ptr -> previous;
-			add_to_top(ptr, frame);
+			add_to_top(ptr);
 		}
 
 		else if (ptr -> previous != NULL && ptr -> next == NULL){ //case is in the bottom and > 1 page
