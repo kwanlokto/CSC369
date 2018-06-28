@@ -36,6 +36,23 @@ int lru_evict() {
 	return frame;
 }
 
+
+void add_to_top(struct linked_list * ptr, int frame) {
+	ptr -> next = top;
+	ptr -> previous = NULL;
+	ptr -> frame_number = frame;
+	if (top != NULL) {
+		top -> previous = ptr;
+	} else {
+		bottom = NULL;
+	}
+	top = ptr;
+	if (top -> next == NULL) {
+		bottom = top;
+	}
+}
+
+
 /* This function is called on each access to a page to update any information
  * needed by the lru algorithm.
  * Input: The page table entry for the page that is being accessed.
@@ -46,14 +63,14 @@ void lru_ref(pgtbl_entry_t *p) {
 	if (coremap[frame].stack_ptr == NULL) { //Checks if the hash is pointing to something
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
 		ptr = coremap[frame].stack_ptr;
-		add_to_top(ptr);
+		add_to_top(ptr, frame);
 	}
 	else {
 		ptr = coremap[frame].stack_ptr;
 		if (ptr -> previous != NULL && ptr -> next != NULL) { // case in the middle
 			(ptr -> previous) -> next = ptr -> next;
 			(ptr -> next) -> previous = ptr -> previous;
-			add_to_top(ptr);
+			add_to_top(ptr, frame);
 		}
 
 		else if (ptr == bottom) { //case is in the bottom and > 1 page
@@ -70,20 +87,7 @@ void lru_ref(pgtbl_entry_t *p) {
 }
 
 
-void add_to_top(struct linked_list * ptr) {
-	ptr -> next = top;
-	ptr -> previous = NULL;
-	ptr -> frame_number = frame;
-	if (top != NULL) {
-		top -> previous = ptr;
-	} else {
-		bottom = NULL;
-	}
-	top = ptr;
-	if (top -> next == NULL) {
-		bottom = top;
-	}
-}
+
 
 /* Initialize any data structures needed for this
  * replacement algorithm
