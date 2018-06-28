@@ -43,13 +43,12 @@ void add_to_top(struct linked_list * ptr, int frame) {
 	ptr -> frame_number = frame;
 	if (top != NULL) {
 		top -> previous = ptr;
-	} else {
-		bottom = NULL;
 	}
 	top = ptr;
 	if (top -> next == NULL) {
 		bottom = top;
 	}
+	//printf("add to top\n");
 }
 
 
@@ -60,26 +59,35 @@ void add_to_top(struct linked_list * ptr, int frame) {
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
 	struct linked_list * ptr;
-	if (coremap[frame].stack_ptr == NULL) { //Checks if the hash is pointing to something
+	if (coremap[frame].stack_ptr == NULL) { //Checks if the hash is not pointing to something
+
+		//printf("empty\n");
+
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
 		ptr = coremap[frame].stack_ptr;
 		add_to_top(ptr, frame);
+		//printf("empty_done!\n");
 	}
 	else {
 		ptr = coremap[frame].stack_ptr;
 		if (ptr -> previous != NULL && ptr -> next != NULL) { // case in the middle
+			//printf("middle\n");
+
 			(ptr -> previous) -> next = ptr -> next;
 			(ptr -> next) -> previous = ptr -> previous;
 			add_to_top(ptr, frame);
 		}
 
-		else if (ptr == bottom && ptr != top) { //case is in the bottom and > 1 page
+		else if (ptr -> previous != NULL && ptr -> next == NULL){ //case is in the bottom and > 1 page
+			//printf("bottom\n");
+
 			bottom -> next = top;
 			top = bottom;
 
 			bottom = bottom -> previous;
 			bottom->next = NULL;
 			top -> previous = NULL;
+			//printf("bottom_done!\n");
 		}
 	}
 
