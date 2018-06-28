@@ -64,7 +64,7 @@ void lru_ref(pgtbl_entry_t *p) {
 
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
 		ptr = coremap[frame].stack_ptr;
-		ptr -> frame = frame;
+		ptr -> frame_number = frame;
 		add_to_top(ptr);
 		//printf("empty_done!\n");
 	}
