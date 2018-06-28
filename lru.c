@@ -73,7 +73,7 @@ void lru_ref(pgtbl_entry_t *p) {
 			add_to_top(ptr, frame);
 		}
 
-		else if (ptr == bottom) { //case is in the bottom and > 1 page
+		else if (ptr == bottom && ptr != top) { //case is in the bottom and > 1 page
 			bottom -> next = top;
 			top = bottom;
 
