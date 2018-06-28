@@ -22,16 +22,17 @@ struct linked_list * bottom;
 
 int lru_evict() {
 	int frame = bottom -> frame_number;
-	printf("evict %d\n", frame);
-	bottom = bottom -> previous;
+	struct linked_list temp = *bottom;
+	free(bottom);
 
-	coremap[frame].stack_ptr = NULL;
-	if (bottom != NULL) {
-		free(bottom -> next);
+	bottom = temp.previous;
+	if (bottom != NULL){ //Checks if there is no previous
 		bottom -> next = NULL;
 	} else {
 		top = NULL;
 	}
+	coremap[frame].stack_ptr = NULL;
+
 	return frame;
 }
 
@@ -41,21 +42,35 @@ int lru_evict() {
  */
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
-	printf("reference %d\n", frame);
 	struct linked_list * ptr;
-	if (coremap[frame].stack_ptr == NULL) {
+	if (coremap[frame].stack_ptr == NULL) { //Checks if the hash is pointing to something
 		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
 		ptr = coremap[frame].stack_ptr;
+		add_to_top(ptr);
 	}
 	else {
 		ptr = coremap[frame].stack_ptr;
-		if (ptr -> previous != NULL) {
+		if (ptr -> previous != NULL && ptr -> next != NULL) { // case in the middle
 			(ptr -> previous) -> next = ptr -> next;
-		}
-		if (ptr -> next != NULL) {
 			(ptr -> next) -> previous = ptr -> previous;
+			add_to_top(ptr);
+		}
+
+		else if (ptr == bottom) { //case is in the bottom and > 1 page
+			bottom -> next = top;
+			top = bottom;
+
+			bottom = bottom -> previous;
+			bottom->next = NULL;
+			top -> previous = NULL;
 		}
 	}
+
+	return;
+}
+
+
+void add_to_top(struct linked_list * ptr) {
 	ptr -> next = top;
 	ptr -> previous = NULL;
 	ptr -> frame_number = frame;
@@ -68,9 +83,7 @@ void lru_ref(pgtbl_entry_t *p) {
 	if (top -> next == NULL) {
 		bottom = top;
 	}
-	return;
 }
-
 
 /* Initialize any data structures needed for this
  * replacement algorithm
