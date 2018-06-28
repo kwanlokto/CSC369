@@ -21,12 +21,16 @@ struct linked_list * last;
  * for the page that is to be evicted.
  */
 int fifo_evict() {
-	if (head == last) {
-		last = NULL;
-	}
-	free(head);
+	
 	int evictFrame = head -> frame_number;
 	head = head -> next;
+	printf("1.evict frame = %d\n", evictFrame);
+
+	if (head == last) {
+		free(head);
+		head = NULL;
+		last = NULL;
+	}
 	return evictFrame;
 }
 
