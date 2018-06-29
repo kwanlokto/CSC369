@@ -71,9 +71,9 @@ int allocate_frame(pgtbl_entry_t *p) {
 
 	}
 	unsigned int temp = frame << PAGE_SHIFT;
-	p->frame = (p->frame << 20) >> 20;
+	p->frame = p->frame & PAGE_MASK;
 	p->frame = temp | p->frame ;
-
+	//p->frame = frame << PAGE_SHIFT;
 
 
 	// Record information for virtual page that will now be stored in frame
@@ -172,7 +172,7 @@ char *find_physpage(addr_t vaddr, char type) {
 
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
-	
+
 	//(void)idx; // To keep compiler happy - remove when you have a real use.
 
 
@@ -183,7 +183,8 @@ char *find_physpage(addr_t vaddr, char type) {
 		pgdir[idx] = init_second_level();
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-	pgtbl_entry_t * secondLevel = pgdir[idx].pde;
+	//only want the frame number so we mask it
+	pgtbl_entry_t * secondLevel = pgdir[idx].pde & PAGE_MASK;
 	p = &(secondLevel[tblIdx]);
 
 
@@ -194,11 +195,14 @@ char *find_physpage(addr_t vaddr, char type) {
 	}
 	else { //invalid
 
-		int frame = allocate_frame(p);
+		int frame;
 		if (p->frame & PG_ONSWAP) { // On swap
+			frame = allocate_frame(p);
 			swap_pagein(frame, p->swap_off);
 			p->frame = p->frame & (~PG_DIRTY);
+			p->frame = p->frame | PG_ONSWAP;
 		} else { // Not on swap meaning that it is new
+			frame = allocate_frame(p);
 			init_frame(frame, vaddr);
 			//printf("create new frame\n");
 			// // Adds the new page to the swap space
