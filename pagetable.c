@@ -24,6 +24,7 @@ int evict_dirty_count = 0;
  * Counters for evictions should be updated appropriately in this function.
  */
 int allocate_frame(pgtbl_entry_t *p) {
+	printf("allocated \n");
 	int i;
 	int frame = -1;
 	for(i = 0; i < memsize; i++) {
@@ -58,7 +59,7 @@ int allocate_frame(pgtbl_entry_t *p) {
 				fprintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
-			//printf("SWAP ------ expected: %d and actual: %d\n", tableEntry->swap_off, location);
+			printf("SWAP ------ expected: %d and actual: %d\n", tableEntry->swap_off, location);
 			tableEntry->swap_off = location;
 
 			tableEntry->frame = tableEntry->frame & (~PG_DIRTY); //set it to clean
@@ -164,12 +165,13 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
+	printf("find \n");
 	static int counter = 0;
 	counter++;
 	//printf("%d. Vaddr %lu\n", counter, vaddr);
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-
+	printf("index: %lu ?\n", idx);
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
 
@@ -185,8 +187,9 @@ char *find_physpage(addr_t vaddr, char type) {
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
 	//only want the frame number so we mask it
 	pgtbl_entry_t * secondLevel = pgdir[idx].pde & PAGE_MASK;
-	p = &(secondLevel[tblIdx]);
 
+	p = &(secondLevel[tblIdx]);
+	printf("passed\n");
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
 	if (p -> frame & PG_VALID) { //valid
