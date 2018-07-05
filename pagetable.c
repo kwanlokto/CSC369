@@ -1,4 +1,4 @@
-#include <assert.h>:
+#include <assert.h>
 #include <string.h>
 #include "sim.h"
 #include "pagetable.h"
