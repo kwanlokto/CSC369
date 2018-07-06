@@ -44,27 +44,21 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// IMPLEMENTATION NEEDED
 
 
+//------------------------ OUR CODE -------------------------//
+		pgtbl_entry_t * victimEntry = (coremap[frame]).pte;
 
-// ------------------------------- IMPLEMENTATION -------------------------//
-		// The first entry in a PAGE is what?
-		// What does coremap[frame].pte point to?
-		pgtbl_entry_t * tableEntry = (coremap[frame]).pte;
-
-		tableEntry->frame = tableEntry->frame & (~PG_VALID);
-
-		if (tableEntry->frame & PG_DIRTY) { //if it is dirty
+		victimEntry->frame = victimEntry->frame & (~PG_VALID);
+		if (victimEntry->frame & PG_DIRTY) { //if it is dirty
 			int location;
 			// If it is on the swap
-			if ((location = swap_pageout(frame, tableEntry->swap_off)) == INVALID_SWAP) {
+			if ((location = swap_pageout(frame, victimEntry->swap_off)) == INVALID_SWAP) {
 				fprintf(stderr, "Failing to write modified page");
 				exit(1); //fails
 			}
-			tableEntry->swap_off = location;
-
-			tableEntry->frame = tableEntry->frame & (~PG_DIRTY); //set it to clean
+			victimEntry->swap_off = location;
+			victimEntry->frame = victimEntry->frame & (~PG_DIRTY); //set it to clean
 			evict_dirty_count++;
 		}
-
 		else { //if it is clean
 			evict_clean_count++;
 		}
@@ -73,7 +67,6 @@ int allocate_frame(pgtbl_entry_t *p) {
 	unsigned int temp = frame << PAGE_SHIFT;
 	p->frame = p->frame & (~PAGE_MASK); //don't want the page frame
 	p->frame = temp | p->frame ;
-	//p->frame = frame << PAGE_SHIFT;
 
 
 	// Record information for virtual page that will now be stored in frame
@@ -164,13 +157,15 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
-	static int counter = 0;
-	counter++;
-	//printf("%d. Vaddr %lu\n", counter, vaddr);
+
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
 
 	// IMPLEMENTATION NEEDED
+
+
+
+//------------------------ OUR CODE -------------------------//
 	// Use top-level page directory to get pointer to 2nd-level page table
 
 	// Checks if the second level page table is valid
