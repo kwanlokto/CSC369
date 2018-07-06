@@ -184,8 +184,8 @@ char *find_physpage(addr_t vaddr, char type) {
 		pgdir[idx] = init_second_level();
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-	//only want the frame number so we mask it
-	pgtbl_entry_t * secondLevel = pgdir[idx].pde & PAGE_MASK;
+	
+	pgtbl_entry_t * secondLevel = pgdir[idx].pde;
 
 	p = &(secondLevel[tblIdx]);
 	printf("passed\n");
