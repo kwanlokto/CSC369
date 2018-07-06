@@ -164,28 +164,26 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
-	//printf("find \n");
 	static int counter = 0;
 	counter++;
 	//printf("%d. Vaddr %lu\n", counter, vaddr);
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-	//printf("index: %lu ?\n", idx);
+
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
-
-	//(void)idx; // To keep compiler happy - remove when you have a real use.
-
-
-	// Use vaddr to get index into 2nd-level page table and initialize 'p'
 
 	// Checks if the second level page table is valid
 	if (!(pgdir[idx].pde & PG_VALID)) {
 		pgdir[idx] = init_second_level();
 	}
+	//only want pgtbl (in init_second_level)
+	pgtbl_entry_t * secondLevel = (pgtbl_entry_t *) (pgdir[idx].pde & PAGE_MASK);
+
+
+	// Use vaddr to get index into 2nd-level page table and initialize 'p'
+
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-	//only want the pgtbl in init_second_level
-	pgtbl_entry_t * secondLevel = (pgtbl_entry_t *) pgdir[idx].pde & PAGE_MASK; 
 	p = &(secondLevel[tblIdx]);
 	//printf("passed\n");
 
@@ -196,42 +194,20 @@ char *find_physpage(addr_t vaddr, char type) {
 	}
 	else { //invalid
 
-		int frame;
+		int frame = allocate_frame(p);
 		if (p->frame & PG_ONSWAP) { // On swap
-			frame = allocate_frame(p);
 			swap_pagein(frame, p->swap_off);
 			p->frame = p->frame & (~PG_DIRTY);
 			p->frame = p->frame | PG_ONSWAP;
-		} else { // Not on swap meaning that it is new
-			frame = allocate_frame(p);
+		}
+		else { // Not on swap meaning that it is new
 			init_frame(frame, vaddr);
-			//printf("create new frame\n");
-			// // Adds the new page to the swap space
-			// unsigned int bit = 1;
-			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
-			// 	bit++;
-			// }
-			// if (bit == swapmap->nbits) { //If not space in swap space
-			// 	fprintf(stderr, "No more space in swap space");
-			// 	exit(1);
-			// }
-			// else { //at index bit there is space in the swapspace
-			// 	bitmap_mark(swapmap, bit); //set that bit to one
-			// 	int location = swap_pageout(frame, bit);
-			// 	if (location == INVALID_SWAP) {
-			// 		pfrintf(stderr, "Failing to write page on disk that doesn't exist");
-			// 		exit(1);
-			// 	}
-			// 	p->swap_off = location;
-			// }
-			//
 			p->frame = p->frame | PG_DIRTY; //want to write it to the swap
 			p->frame = p->frame | PG_ONSWAP;
 		}
 		miss_count++;
 		ref_count++;
 	}
-
 
 
 	// Make sure that p is marked valid and referenced. Also mark it
