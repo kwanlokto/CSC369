@@ -186,7 +186,7 @@ char *find_physpage(addr_t vaddr, char type) {
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
 
 	//pgtbl_entry_t * secondLevel = pgdir[idx].pde & PAGE_MASK; //only want the page
-	pgtbl_entry_t * secondLevel = coremap[pgdir[(idx].pde & PAGE_MASK) >> PAGE_SHIFT].pte;
+	pgtbl_entry_t * secondLevel = coremap[pgdir[idx].pde >> PAGE_SHIFT].pte;
 	p = &(secondLevel[tblIdx]);
 	//printf("passed\n");
 
