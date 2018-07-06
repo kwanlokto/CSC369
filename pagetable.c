@@ -24,7 +24,7 @@ int evict_dirty_count = 0;
  * Counters for evictions should be updated appropriately in this function.
  */
 int allocate_frame(pgtbl_entry_t *p) {
-	printf("allocated \n");
+	//printf("allocated \n");
 	int i;
 	int frame = -1;
 	for(i = 0; i < memsize; i++) {
@@ -170,7 +170,7 @@ char *find_physpage(addr_t vaddr, char type) {
 	//printf("%d. Vaddr %lu\n", counter, vaddr);
 	pgtbl_entry_t *p = NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-	printf("index: %lu ?\n", idx);
+	//printf("index: %lu ?\n", idx);
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
 
@@ -184,11 +184,11 @@ char *find_physpage(addr_t vaddr, char type) {
 		pgdir[idx] = init_second_level();
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
-	
+
 	pgtbl_entry_t * secondLevel = pgdir[idx].pde;
 
 	p = &(secondLevel[tblIdx]);
-	printf("passed\n");
+	//printf("passed\n");
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
 	if (p -> frame & PG_VALID) { //valid
@@ -206,7 +206,7 @@ char *find_physpage(addr_t vaddr, char type) {
 		} else { // Not on swap meaning that it is new
 			frame = allocate_frame(p);
 			init_frame(frame, vaddr);
-			printf("create new frame\n");
+			//printf("create new frame\n");
 			// // Adds the new page to the swap space
 			// unsigned int bit = 1;
 			// while (bit < swapmap->nbits && bitmap_isset(swapmap, bit) == 1) {
