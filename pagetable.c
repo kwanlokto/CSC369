@@ -164,7 +164,7 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
-	printf("find \n");
+	//printf("find \n");
 	static int counter = 0;
 	counter++;
 	//printf("%d. Vaddr %lu\n", counter, vaddr);
@@ -185,7 +185,7 @@ char *find_physpage(addr_t vaddr, char type) {
 	}
 	unsigned tblIdx = PGTBL_INDEX(vaddr); //second level index
 
-	pgtbl_entry_t * secondLevel = pgdir[idx].pde;
+	pgtbl_entry_t * secondLevel = pgdir[idx].pde & PAGE_MASK;
 
 	p = &(secondLevel[tblIdx]);
 	//printf("passed\n");
