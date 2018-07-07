@@ -12,8 +12,8 @@ extern int debug;
 
 extern struct frame *coremap;
 
-struct linked_list * top;
-struct linked_list * bottom;
+int top_frame;
+int bottom_frame;
 
 /* Page to evict is chosen using the accurate LRU algorithm.
  * Returns the page frame number (which is also the index in the coremap)
@@ -21,33 +21,30 @@ struct linked_list * bottom;
  */
 
 int lru_evict() {
-	int frame = bottom -> frame_number;
-	struct linked_list temp = *bottom;
-	free(bottom);
-
-	bottom = temp.previous;
-	if (bottom != NULL){ //Checks if there is no previous
-		bottom -> next = NULL;
+	int victim_page = bottom_frame;
+	bottom_frame = coremap[bottom_frame].previous_frame;
+	if (bottom_frame != -1){ //Checks if there is no previous
+		coremap[bottom_frame].next_frame = -1;
 	} else {
-		top = NULL;
+		top_frame = -1;
 	}
-	coremap[frame].stack_ptr = NULL;
 
-	return frame;
+	return victim_page;
 }
 
-
-void add_to_top(struct linked_list * ptr) {
-	ptr -> next = top;
-	ptr -> previous = NULL;
-	if (top != NULL) {
-		top -> previous = ptr;
+/* Add frame to the top of the stack
+ * Fixes any pointers 
+ */
+void add_to_top(int frame) {
+	coremap[frame].next_frame = top_frame;
+	coremap[frame].previous_frame = -1;
+	if (top_frame != -1) {
+		coremap[top_frame].previous_frame = frame;
 	}
-	top = ptr;
-	if (top -> next == NULL) {
-		bottom = top;
+	top_frame = frame;
+	if (coremap[top_frame].next_frame == -1) {
+		bottom_frame = top_frame;
 	}
-	//printf("add to top\n");
 }
 
 
@@ -57,38 +54,21 @@ void add_to_top(struct linked_list * ptr) {
  */
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
-	struct linked_list * ptr;
-	if (coremap[frame].stack_ptr == NULL) { //Checks if the hash is not pointing to something
+	int previous = coremap[frame].previous_frame;
+	int next = coremap[frame].next_frame;
 
-		//printf("empty\n");
-
-		coremap[frame].stack_ptr = malloc(sizeof(struct linked_list));
-		ptr = coremap[frame].stack_ptr;
-		ptr -> frame_number = frame;
-		add_to_top(ptr);
-		//printf("empty_done!\n");
+	// Case where frame is in the middle of the stack
+	if (previous != -1 && next != -1) {
+		coremap[previous].next_frame = next;
+		coremap[next].previous_frame = previous;
+		add_to_top(frame);
 	}
-	else {
-		ptr = coremap[frame].stack_ptr;
-		if (ptr -> previous != NULL && ptr -> next != NULL) { // case in the middle
-			//printf("middle\n");
-			
-			(ptr -> previous) -> next = ptr -> next;
-			(ptr -> next) -> previous = ptr -> previous;
-			add_to_top(ptr);
-		}
 
-		else if (ptr -> previous != NULL && ptr -> next == NULL){ //case is in the bottom and > 1 page
-			//printf("bottom\n");
-
-			bottom -> next = top;
-			top = bottom;
-
-			bottom = bottom -> previous;
-			bottom->next = NULL;
-			top -> previous = NULL;
-			//printf("bottom_done!\n");
-		}
+	// Case where frame is at the bottom of the stack
+	else if (previous != -1 && next == -1){
+		bottom_frame = coremap[bottom_frame].previous_frame;
+		coremap[bottom_frame].next_frame = -1;
+		add_to_top(frame);
 	}
 
 	return;
@@ -102,8 +82,9 @@ void lru_ref(pgtbl_entry_t *p) {
  */
 void lru_init() {
 	for (int i = 0; i < memsize; i++) {
-		coremap[i].stack_ptr = NULL;
+		coremap[i].next_frame = -1;
+		coremap[i].previous_frame = -1;
 	}
-	top = NULL;
-	bottom = NULL;
+	top_frame = -1;
+	bottom_frame = -1;
 }

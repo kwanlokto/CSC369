@@ -67,14 +67,12 @@ struct frame {
 	pgtbl_entry_t *pte;// Pointer back to pagetable entry (pte) for page
 	                   // stored in this frame
 
-	struct linked_list *stack_ptr; //Added linked list (stack) struct for LRU algo
-};
+  // Attributes used in LRU
+	int next_frame;
+	int previous_frame;
 
-struct linked_list {  //Added linked list (stack) struct for LRU algo
-	struct linked_list *previous;
-	struct linked_list *next;
-	int frame_number;
-
+	//Attributes used in opt
+	addr_t vaddr;
 };
 
 
