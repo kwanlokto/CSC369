@@ -40,6 +40,7 @@ struct page_time{
  * for the page that is to be evicted.
  */
 int opt_evict() {
+	printf("evict\n");
 	int longest_time = -1;
 	int frame = -1;
 	for (int i = 0; i < memsize; i++) {
@@ -59,9 +60,11 @@ int opt_evict() {
 					}
 				}
 			}
+			curr = curr->next_page;
 		}
 
 	}
+	printf("finish evict\n");
 	if (frame != -1) {
 		return frame;
 	}
@@ -74,21 +77,26 @@ int opt_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void opt_ref(pgtbl_entry_t *p) {
-
+	printf("ref\n");
 	unsigned int frame = (p->frame) >> PAGE_SHIFT;
 	addr_t vaddr = coremap[frame].vaddr;
+	//printf("Frame: %d addr %lx \n", frame, vaddr);
 	unsigned int dir = PGDIR_INDEX(vaddr);
+	 printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
 	struct opt_page * curr = ht[dir].head;
 
-	int found = 0;
-	while (curr != NULL && !found) {
+
+	while (curr != NULL) {
+		printf("%p\n",curr);
 		if (curr->vaddr == vaddr) {
-			found = 1;
+			//printf("%p\n",curr);
 			struct page_time temp = *(curr->start_time);
 			free(curr->start_time);
 			curr->start_time = temp.next_time;
 			return;
+		
 		}
+		curr = curr->next_page;
 	}
 	fprintf(stderr, "Referencing page that doesn't exist????\n");
 	exit(1);
@@ -110,7 +118,7 @@ void add_new_time(struct opt_page * pg, struct page_time * t) {
  * replacement algorithm.
  */
 void opt_init() {
-
+	printf("init\n");
 	// Initialize the hash_table
 	ht = malloc(PTRS_PER_PGDIR * sizeof(struct hash_table));
 	for (int i = 0; i < PTRS_PER_PGDIR; i++) {
@@ -165,19 +173,23 @@ void opt_init() {
 			// This means it is a new entry in the hash
 			// Initialize the new opt_page
 			if (!exist) {
-				if (curr == NULL) {
-					ht[dir].head = pg;
-				} else {
-					prev ->next_page = pg;
-				}
+				//if (prev == NULL) {
+				//	ht[dir].head = pg;
+				//} else {
+				//	prev ->next_page = pg;
+				//}
+				pg->next_page = ht[dir].head;
+				ht[dir].head = pg;
+				
+				//pg->next_page = NULL 
 				pg->vaddr = vaddr;
-				pg->next_page = NULL;
 				pg->start_time = NULL;
 				pg->end_time = NULL;
-
+				
 				// Add the virtual address to the coremap, so we can use the hash table
 				// from the coremap
 				if (index < memsize) {
+					printf("%d.vaddr: %lx in dir %d in pg %p\n", index, vaddr, dir, pg);
 					coremap[index].vaddr = vaddr;
 				}
 				index++;
@@ -187,6 +199,7 @@ void opt_init() {
 			time_count++;
 		}
 	}
+	printf("finished init\n");
 
 	// initialize all nextUse to be 0
 	// nextUse indicates that after 'nextUse' references this page will be
