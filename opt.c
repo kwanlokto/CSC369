@@ -82,12 +82,12 @@ void opt_ref(pgtbl_entry_t *p) {
 	addr_t vaddr = coremap[frame].vaddr;
 	//printf("Frame: %d addr %lx \n", frame, vaddr);
 	unsigned int dir = PGDIR_INDEX(vaddr);
-	 printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
+	// printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
 	struct opt_page * curr = ht[dir].head;
 
 
 	while (curr != NULL) {
-		printf("%p\n",curr);
+		//printf("%p\n",curr);
 		if (curr->vaddr == vaddr) {
 			//printf("%p\n",curr);
 			struct page_time temp = *(curr->start_time);
@@ -145,7 +145,7 @@ void opt_init() {
 		if(buf[0] != '=') {
 			sscanf(buf, "%c %lx", &type, &vaddr);
 
-
+			//printf("%d. vaddr %lx\n", time_count, vaddr);
 			// Process the address read from trace file
 			unsigned int dir = PGDIR_INDEX(vaddr);
 			pg = malloc(sizeof(struct opt_page));
@@ -155,17 +155,18 @@ void opt_init() {
 
 			// Traverse the list to check if this addr already exists
 			// If not then get to the end and add the pg to the end
-			struct opt_page * prev = NULL;
+			//struct opt_page * prev = NULL;
 			struct opt_page * curr = ht[dir].head;
-
+			//printf("dir %d \n",dir);
 			int exist = 0;  //if this vaddr already exists
 			while (curr != NULL && !exist) {
-				if (curr -> vaddr == pg -> vaddr) {
+				//printf("too\n");
+				if (curr -> vaddr == vaddr) {
 					exist = 1;
 					free(pg);
 					add_new_time(curr, pgt);
 				}
-				prev = curr;
+				//prev = curr;
 				curr = curr->next_page;
 			}
 
