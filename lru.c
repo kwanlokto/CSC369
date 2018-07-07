@@ -21,6 +21,7 @@ int bottom_frame;
  */
 
 int lru_evict() {
+	printf("evict\n");
 	int victim_page = bottom_frame;
 	bottom_frame = coremap[bottom_frame].previous_frame;
 	if (bottom_frame != -1){ //Checks if there is no previous
@@ -28,14 +29,15 @@ int lru_evict() {
 	} else {
 		top_frame = -1;
 	}
-
+	printf("finish evict\n");
 	return victim_page;
 }
 
 /* Add frame to the top of the stack
- * Fixes any pointers 
+ * Fixes any pointers
  */
 void add_to_top(int frame) {
+	printf("add to top\n");
 	coremap[frame].next_frame = top_frame;
 	coremap[frame].previous_frame = -1;
 	if (top_frame != -1) {
@@ -45,6 +47,7 @@ void add_to_top(int frame) {
 	if (coremap[top_frame].next_frame == -1) {
 		bottom_frame = top_frame;
 	}
+	printf("finish add to top\n");
 }
 
 
@@ -53,6 +56,7 @@ void add_to_top(int frame) {
  * Input: The page table entry for the page that is being accessed.
  */
 void lru_ref(pgtbl_entry_t *p) {
+	printf("Reference\n");
 	int frame = (p -> frame) >> PAGE_SHIFT;
 	int previous = coremap[frame].previous_frame;
 	int next = coremap[frame].next_frame;
@@ -70,7 +74,7 @@ void lru_ref(pgtbl_entry_t *p) {
 		coremap[bottom_frame].next_frame = -1;
 		add_to_top(frame);
 	}
-
+	printf("Finish Reference\n");
 	return;
 }
 
