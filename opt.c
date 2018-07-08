@@ -158,14 +158,16 @@ void opt_init() {
 	while(fgets(buf, MAXLINE, tfp) != NULL) {
 		if(buf[0] != '=') {
 			sscanf(buf, "%c %lx", &type, &vaddr);
-
+			//printf("%d \t", time_count);
 
 			// Add the address to the linked list
 			struct linked_list * node = malloc(sizeof(struct linked_list));
 			node -> vaddr = vaddr;
+			node -> next = NULL;	
 			struct linked_list * curr_node = pg_address;
 			struct linked_list * prev_node = NULL;
 			while (curr_node != NULL) {
+				//printf("new \t");
 				prev_node = curr_node;
 				curr_node = curr_node->next;
 			}
@@ -191,7 +193,7 @@ void opt_init() {
 			//printf("dir %d \n",dir);
 			int exist = 0;  //if this vaddr already exists
 			while (curr != NULL && !exist) {
-				//printf("too\n");
+				//printf("too \t");
 				if (curr -> vaddr == vaddr) {
 					exist = 1;
 					free(pg);
