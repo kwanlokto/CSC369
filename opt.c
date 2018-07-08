@@ -38,13 +38,14 @@ struct linked_list{
 };
 
 struct linked_list * pg_address; //list of pages in the order in which it will be used
+struct linked_list * last_vaddr; 
 
 /* Page to evict is chosen using the optimal (aka MIN) algorithm.
  * Returns the page frame number (which is also the index in the coremap)
  * for the page that is to be evicted.
  */
 int opt_evict() {
-	printf("evict\n");
+	//printf("evict\n");
 	int longest_time = -1;
 	int frame = -1;
 	for (int i = 0; i < memsize; i++) {
@@ -83,26 +84,31 @@ int opt_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void opt_ref(pgtbl_entry_t *p) {
-	printf("ref\n");
+	//printf("ref\n");
 	unsigned int frame = (p->frame) >> PAGE_SHIFT;
 	addr_t vaddr = coremap[frame].vaddr;
 	//printf("Frame: %d addr %lx \n", frame, vaddr);
 	unsigned int dir = PGDIR_INDEX(vaddr);
-	// printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
+	//printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
+	//printf("these two should be the same: %lx and %lx\n",vaddr, pg_address->vaddr);
 	struct opt_page * curr = ht[dir].head;
+	//printf("no fail\n");
 
 
 	while (curr != NULL) {
 		//printf("%p\n",curr);
 		if (curr->vaddr == vaddr) {
 			//printf("%p\n",curr);
+			//printf("time should be linear %d\n", curr->start_time ->t);
+			
 			struct page_time time_temp = *(curr->start_time);
 			free(curr->start_time);
 			curr->start_time = time_temp.next_time;
-
+			printf ("llnode \n");
 			struct linked_list ll_temp = *(pg_address);
 			free(pg_address);
 			pg_address = ll_temp.next;
+			printf("successful\n");
 			return;
 
 		}
@@ -164,18 +170,15 @@ void opt_init() {
 			struct linked_list * node = malloc(sizeof(struct linked_list));
 			node -> vaddr = vaddr;
 			node -> next = NULL;
-			struct linked_list * curr_node = pg_address;
-			struct linked_list * prev_node = NULL;
-			while (curr_node != NULL) {
-				//printf("new \t");
-				prev_node = curr_node;
-				curr_node = curr_node->next;
-			}
-			if (prev_node == NULL) { //if the current linked_list is empty
+			
+			if (pg_address == NULL) { //if the current linked_list is empty
 				pg_address = node;
+				last_vaddr = pg_address;
 			} else {
-				prev_node->next = node;
+				last_vaddr->next = node;
+				last_vaddr = node;	
 			}
+
 
 
 			//printf("%d. vaddr %lx\n", time_count, vaddr);
@@ -195,7 +198,7 @@ void opt_init() {
 			while (curr != NULL && !exist) {
 				//printf("too \t");
 				if (curr->vaddr == vaddr) {
-					printf("same\n");
+					//printf("same\n");
 					exist = 1;
 					free(pg);
 					add_new_time(curr, pgt);
@@ -218,13 +221,13 @@ void opt_init() {
 
 				//pg->next_page = NULL
 				pg->vaddr = vaddr;
-				pg->start_time = NULL;
-				pg->end_time = NULL;
+				pg->start_time = pgt;
+				pg->end_time = pgt;
 
 				// Add the virtual address to the coremap, so we can use the hash table
 				// from the coremap
 				if (index < memsize) {
-					printf("%d.vaddr: %lx in dir %d in pg %p\n", index, vaddr, dir, pg);
+					//printf("%d.vaddr: %lx in dir %d in pg %p\n", index, vaddr, dir, pg);
 					coremap[index].vaddr = vaddr;
 				}
 				index++;
