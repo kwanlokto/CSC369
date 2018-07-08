@@ -49,7 +49,7 @@ int opt_evict() {
 	int frame = -1;
 	for (int i = 0; i < memsize; i++) {
 		addr_t vaddr = coremap[i].vaddr;
-		unsigned int dir = PGDIR_INDEX(vaddr);
+		unsigned int dir = PGTBL_INDEX(vaddr);
 		struct opt_page * curr = ht[dir].head;
 
 		while (curr != NULL) {
@@ -87,7 +87,7 @@ void opt_ref(pgtbl_entry_t *p) {
 	unsigned int frame = (p->frame) >> PAGE_SHIFT;
 	addr_t vaddr = coremap[frame].vaddr;
 	//printf("Frame: %d addr %lx \n", frame, vaddr);
-	unsigned int dir = PGDIR_INDEX(vaddr);
+	unsigned int dir = PGTBL_INDEX(vaddr);
 	// printf("Frame: %d addr %lx in dir %d\n", frame, vaddr, dir);
 	struct opt_page * curr = ht[dir].head;
 
@@ -178,7 +178,7 @@ void opt_init() {
 
 			//printf("%d. vaddr %lx\n", time_count, vaddr);
 			// Process the address read from trace file
-			unsigned int dir = PGDIR_INDEX(vaddr);
+			unsigned int dir = PGTBL_INDEX(vaddr);
 			pg = malloc(sizeof(struct opt_page));
 			pgt = malloc(sizeof(struct page_time));
 			pgt->t = time_count;
