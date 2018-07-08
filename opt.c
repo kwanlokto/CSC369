@@ -84,6 +84,7 @@ int opt_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void opt_ref(pgtbl_entry_t *p) {
+	printf("opt_ref\n");
 	unsigned int frame = (p->frame) >> PAGE_SHIFT;
 	addr_t vaddr = coremap[frame].vaddr;
 	unsigned int dir = PGDIR_INDEX(vaddr);
@@ -120,6 +121,7 @@ void add_new_time(struct opt_page * pg, struct page_time * t) {
  * replacement algorithm.
  */
 void opt_init() {
+	printf("opt_init\n");
 	// Initialize the queue
 	head_linked_list = NULL;
 
