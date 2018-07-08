@@ -53,8 +53,10 @@ int opt_evict() {
 		unsigned int dir = PGDIR_INDEX(vaddr);
 		struct opt_page * curr = ht[dir].head;
 
-		while (curr != NULL) {
+		while (curr != NULL && longest_time != 0) {
+			//printf("no same address\n");
 			if (curr->vaddr == vaddr ) {
+				//printf("start_time is null \n");
 				if (curr->start_time != NULL) {
 					// Get the difference between the next next time this page will be referenced
 					// and the next time it will be referenced
@@ -63,18 +65,21 @@ int opt_evict() {
 						longest_time = diff;
 						frame = i;
 					}
+				} else {
+					longest_time = 0;
+					frame = i;
 				}
 			}
 			curr = curr->next_page;
 		}
 
 	}
-	printf("finish evict\n");
+	//printf("finish evict\n");
 	if (frame != -1) {
 		// NEED TO DO SOMETHING WITH COREMAP[FRAME].VADDR
 		coremap[frame].vaddr = pg_address->vaddr;
 		return frame;
-	}
+	} 	
 	fprintf(stderr, "Evicting page that doesn't exist????\n");
 	exit(1);
 }
@@ -104,11 +109,11 @@ void opt_ref(pgtbl_entry_t *p) {
 			struct page_time time_temp = *(curr->start_time);
 			free(curr->start_time);
 			curr->start_time = time_temp.next_time;
-			printf ("llnode \n");
+			//printf ("llnode \n");
 			struct linked_list ll_temp = *(pg_address);
 			free(pg_address);
 			pg_address = ll_temp.next;
-			printf("successful\n");
+			//printf("successful\n");
 			return;
 
 		}
