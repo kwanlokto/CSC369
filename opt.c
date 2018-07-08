@@ -194,7 +194,8 @@ void opt_init() {
 			int exist = 0;  //if this vaddr already exists
 			while (curr != NULL && !exist) {
 				//printf("too \t");
-				if (curr -> vaddr == vaddr) {
+				if (curr->vaddr == vaddr) {
+					printf("same\n");
 					exist = 1;
 					free(pg);
 					add_new_time(curr, pgt);
