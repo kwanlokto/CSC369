@@ -32,8 +32,12 @@ struct page_time{
 	struct page_time * next_time;
 };
 
+struct linked_list{
+	addr_t vaddr;
+	struct linked_list * next;
+};
 
-//struct linked_list * pg_address; //stack
+struct linked_list * pg_address; //list of pages in the order in which it will be used
 
 /* Page to evict is chosen using the optimal (aka MIN) algorithm.
  * Returns the page frame number (which is also the index in the coremap)
@@ -66,6 +70,8 @@ int opt_evict() {
 	}
 	printf("finish evict\n");
 	if (frame != -1) {
+		// NEED TO DO SOMETHING WITH COREMAP[FRAME].VADDR
+		coremap[frame].vaddr = pg_address->vaddr;
 		return frame;
 	}
 	fprintf(stderr, "Evicting page that doesn't exist????\n");
@@ -90,11 +96,15 @@ void opt_ref(pgtbl_entry_t *p) {
 		//printf("%p\n",curr);
 		if (curr->vaddr == vaddr) {
 			//printf("%p\n",curr);
-			struct page_time temp = *(curr->start_time);
+			struct page_time time_temp = *(curr->start_time);
 			free(curr->start_time);
-			curr->start_time = temp.next_time;
+			curr->start_time = time_temp.next_time;
+
+			struct linked_list ll_temp = *(pg_address);
+			free(pg_address);
+			pg_address = ll_temp.next;
 			return;
-		
+
 		}
 		curr = curr->next_page;
 	}
@@ -119,6 +129,9 @@ void add_new_time(struct opt_page * pg, struct page_time * t) {
  */
 void opt_init() {
 	printf("init\n");
+	// Initialize the queue
+	pg_address = NULL;
+
 	// Initialize the hash_table
 	ht = malloc(PTRS_PER_PGDIR * sizeof(struct hash_table));
 	for (int i = 0; i < PTRS_PER_PGDIR; i++) {
@@ -137,6 +150,7 @@ void opt_init() {
 	char type;
 
 	// READ FROM THE TRACE FILE
+	// perform the necessary operations to initialize all datastructures
 	struct opt_page * pg = NULL;
 	struct page_time * pgt = NULL;
 	int time_count = 0;
@@ -144,6 +158,23 @@ void opt_init() {
 	while(fgets(buf, MAXLINE, tfp) != NULL) {
 		if(buf[0] != '=') {
 			sscanf(buf, "%c %lx", &type, &vaddr);
+
+
+			// Add the address to the linked list
+			struct linked_list * node = malloc(sizeof(struct linked_list));
+			node -> vaddr = vaddr;
+			struct linked_list * curr_node = pg_address;
+			struct linked_list * prev_node = NULL;
+			while (curr_node != NULL) {
+				prev_node = curr_node;
+				curr_node = curr_node->next;
+			}
+			if (prev_node == NULL) { //if the current linked_list is empty
+				pg_address = node;
+			} else {
+				prev_node->next = node;
+			}
+
 
 			//printf("%d. vaddr %lx\n", time_count, vaddr);
 			// Process the address read from trace file
@@ -181,12 +212,12 @@ void opt_init() {
 				//}
 				pg->next_page = ht[dir].head;
 				ht[dir].head = pg;
-				
-				//pg->next_page = NULL 
+
+				//pg->next_page = NULL
 				pg->vaddr = vaddr;
 				pg->start_time = NULL;
 				pg->end_time = NULL;
-				
+
 				// Add the virtual address to the coremap, so we can use the hash table
 				// from the coremap
 				if (index < memsize) {
