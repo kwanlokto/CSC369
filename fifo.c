@@ -12,8 +12,6 @@ extern int debug;
 
 extern struct frame *coremap;
 
-
-
 int nextFrame;
 /* Page to evict is chosen using the fifo algorithm.
  * Returns the page frame number (which is also the index in the coremap)

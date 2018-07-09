@@ -38,7 +38,7 @@ struct linked_list{
 };
 
 struct linked_list * head_linked_list; //list of pages in the order in which it will be used
-struct linked_list * last_linked_list; 
+struct linked_list * last_linked_list;
 
 /* Page to evict is chosen using the optimal (aka MIN) algorithm.
  * Returns the page frame number (which is also the index in the coremap)
@@ -75,7 +75,7 @@ int opt_evict() {
 		// NEED TO DO SOMETHING WITH COREMAP[FRAME].VADDR
 		coremap[frame].vaddr = head_linked_list->vaddr;
 		return frame;
-	} 	
+	}
 	exit(1);
 }
 
@@ -84,7 +84,6 @@ int opt_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void opt_ref(pgtbl_entry_t *p) {
-	printf("opt_ref\n");
 	unsigned int frame = (p->frame) >> PAGE_SHIFT;
 	addr_t vaddr = coremap[frame].vaddr;
 	unsigned int dir = PGDIR_INDEX(vaddr);
@@ -121,7 +120,6 @@ void add_new_time(struct opt_page * pg, struct page_time * t) {
  * replacement algorithm.
  */
 void opt_init() {
-	printf("opt_init\n");
 	// Initialize the queue
 	head_linked_list = NULL;
 
@@ -156,13 +154,13 @@ void opt_init() {
 			struct linked_list * node = malloc(sizeof(struct linked_list));
 			node -> vaddr = vaddr;
 			node -> next = NULL;
-			
+
 			if (head_linked_list == NULL) { //if the current linked_list is empty
 				head_linked_list = node;
 				last_linked_list = head_linked_list;
 			} else {
 				last_linked_list->next = node;
-				last_linked_list = node;	
+				last_linked_list = node;
 			}
 
 			// Process the address read from trace file

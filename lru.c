@@ -21,7 +21,6 @@ int empty;
  */
 
 int lru_evict() {
-	//printf("victim frame: %d\n", bottom_frame);
 	int victim_page = bottom_frame;
 	bottom_frame = coremap[bottom_frame].previous_frame;
 	if (bottom_frame != -1){ //Checks if there is no previous
@@ -32,7 +31,6 @@ int lru_evict() {
 	}
 	coremap[victim_page].next_frame = -1;
 	coremap[victim_page].previous_frame = -1;
-	//printf("finish evict\n");
 	return victim_page;
 }
 
@@ -51,7 +49,6 @@ void add_to_top(int frame) {
 			bottom_frame = top_frame;
 		}
 	}
-	//printf("finish add to top\n");
 }
 
 
@@ -61,10 +58,9 @@ void add_to_top(int frame) {
  */
 void lru_ref(pgtbl_entry_t *p) {
 	int frame = (p -> frame) >> PAGE_SHIFT;
-	//printf("Frame ref: %d\n",frame);
 	int previous = coremap[frame].previous_frame;
 	int next = coremap[frame].next_frame;
-	
+
 	// Case where frame is in the middle of the stack
 	if (previous != -1 && next != -1) {
 		coremap[previous].next_frame = next;
@@ -73,13 +69,10 @@ void lru_ref(pgtbl_entry_t *p) {
 
 	// Case where frame is at the bottom of the stack
 	else if (previous != -1 && next == -1){
-		printf("ref: %d and bot: %d\n", frame, bottom_frame);
-		//printf("Bottom frame: %d\n",bottom_frame);
 		bottom_frame = coremap[bottom_frame].previous_frame;
 		coremap[bottom_frame].next_frame = -1;
 	}
 	add_to_top(frame);	
-	//printf("Finish Reference\n");
 	return;
 }
 
