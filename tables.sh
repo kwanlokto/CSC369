@@ -4,7 +4,7 @@ do
 	do
 		for memsize in 50 100 150 200
 		do
-				./sim -s 4096 -m $memsize -f $file -a $alg >> $1
+				./sim -s 100000 -m $memsize -f $file -a $alg >> results.txt
 		done
 	done
 done
