@@ -16,6 +16,15 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+#include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #ifndef CSC369A3_EXT2_FS_H
 #define CSC369A3_EXT2_FS_H
@@ -235,6 +244,7 @@ struct ext2_dir_entry_2 {
 unsigned char * disk;
 unsigned char * block;
 unsigned int block_size;
+unsigned int inode_table_block_no;
 struct ext2_inode * inode_table;
 struct ext2_super_block * sb;
 struct ext2_group_desc * descriptor;
@@ -244,10 +254,10 @@ struct ext2_group_desc * descriptor;
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
 void open_image(char * virtual_disk);
-int path_walk(struct ext2_inode * root, char * path);
-int check_directory(char * name, unsigned int block_no, int (*fun_ptr)(unsigned int, char *));
-int check_entry(unsigned int block_no, char * name);
-int find_singly_indirect(int block_no, int i);
-int find_doubly_indirect(int block_no, int i, int j);
-int find_triply_indirect(int block_no, int i, int j, int k);
-int print_file(unsigned int block_no, char * name);
+unsigned int path_walk(char * path);
+unsigned int check_directory(char * name, unsigned int block_no, unsigned int (*fun_ptr)(unsigned int, char *));
+unsigned int check_entry(unsigned int block_no, char * name);
+unsigned int find_singly_indirect(int block_no, int i);
+unsigned int find_doubly_indirect(int block_no, int i, int j);
+unsigned int find_triply_indirect(int block_no, int i, int j, int k);
+unsigned int print_file(unsigned int block_no, char * name);

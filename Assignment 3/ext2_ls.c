@@ -32,27 +32,31 @@ int main(int argc, char ** argv){
 		fprintf(stderr, "unknown flag specified");
 		exit(1);
 	}
+	printf("converted\n");
 
 	//---------------------------- open the image ---------------------------//
 	open_image(virtual_disk);
+	printf("opened\n");
 
 	//--------------------------- setup datastructures ----------------------//
 	init_datastructures();
 
+	printf("initialized\n");
 	//Get the root inode
-	struct ext2_inode * root = (struct ext2_inode *)block + EXT2_ROOT_INO * block_size;
+	//struct ext2_inode * root = inode_table + (EXT2_ROOT_INO - 1) * block_size;
+
 
 
 	//---------------------------- go to the paths inode ----------------------//
 	unsigned int block_no;
-	if ((block_no = path_walk(root, path)) < 0) {
-		fprintf(stderr, "not a valid path");
+	if (!(block_no = path_walk(path))) {
+		fprintf(stderr, "not a valid path\n");
 		exit(1);
 	}
 
 
 
-
+	printf("path\n");
 	//-------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ----------------//
 	check_directory(NULL, block_no, &print_file);
 	// struct ext2_inode * inode = (unsigned int *)(block + block_no * block_size);
