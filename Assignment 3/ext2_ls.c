@@ -1,13 +1,6 @@
 #include "ext2.h"
-#include <string.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+
+extern unsigned char * disk;
 
 int main(int argc, char ** argv){
 	if (argc < 3 || argc > 4){
@@ -32,127 +25,26 @@ int main(int argc, char ** argv){
 		fprintf(stderr, "unknown flag specified");
 		exit(1);
 	}
-	printf("converted\n");
+
 
 	//---------------------------- open the image ---------------------------//
 	open_image(virtual_disk);
-	printf("opened\n");
+
 
 	//--------------------------- setup datastructures ----------------------//
 	init_datastructures();
 
-	printf("initialized\n");
-	//Get the root inode
-	//struct ext2_inode * root = inode_table + (EXT2_ROOT_INO - 1) * block_size;
 
-
-
-	//---------------------------- go to the paths inode ----------------------//
-	unsigned int block_no;
-	if (!(block_no = path_walk(path))) {
+	//--------------------m-------- go to the paths inode ----------------------//
+	unsigned int inode_no;
+	if (!(inode_no = path_walk(path))) {
 		fprintf(stderr, "not a valid path\n");
 		exit(1);
 	}
 
 
 
-	printf("path\n");
 	//-------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ----------------//
-	check_directory(NULL, block_no, &print_file);
-	// struct ext2_inode * inode = (unsigned int *)(block + block_no * block_size);
-	// unsigned int * inode_block = inode->i_block;
-	// // Initialize all the variables needed
-	// int index = 0;
-	// unsigned int curr_block_no = inode_block[index];
-	// int i = 0;
-	// int j = 0;
-	// int k = 0;
-	// if (curr_block_no == 0) {
-	// 	fprintf(stderr, "something wrong with pathwalk, curr == 0\n");
-	// 	exit(1);
-	// }
-	//
-	//
-	// while (curr_block_no != 0) {
-	// 	struct ext2_dir_entry_2 * curr_block = (struct ext2_dir_entry_2 *)block + curr_block_no * block_size;
-	// 	printf("%s\n", curr_block->name);
-	//
-	//
-	// 	if (index < 12) { //DIRECT
-	// 		// Set the next variables
-	// 		index++;
-	// 		curr_block_no = 0;
-	//
-	// 		if (index == 12) {
-	// 			printf("Now gonna check 12th entry -- singly indirects \n");
-	// 			curr_block_no = find_singly_indirect(inode_block[index], i);
-	//
-	// 		} else {
-	// 			curr_block_no = inode_block[index];
-	// 		}
-	// 	}
-	//
-	// 	else if (index == 12) { //SINGLY INDIRECT
-	// 		// Set the next variables
-	// 		i++;
-	// 		curr_block_no = 0;
-	// 		if (i == 257) { // If there are no more
-	// 			index++;
-	// 			i = 0;
-	// 			printf("Now gonna check 13th entry -- doubly indirects \n");
-	// 			curr_block_no = find_doubly_indirect(inode_block[index], i, j);
-	// 		}
-	//
-	// 		// If we still working on the same inode
-	// 		if (index == 12) {
-	// 			curr_block_no = find_singly_indirect(inode_block[index], i);
-	// 		}
-	// 	}
-	//
-	//
-	// 	else if (index == 13) { //DOUBLY INDIRECT
-	// 		i++;
-	// 		curr_block_no = 0;
-	//
-	// 		if (i == 257) {
-	// 			i = 0;
-	// 			j++;
-	// 			if (j == 257) {
-	// 				j = 0;
-	// 				index++;
-	// 				printf("Now gonna check 14th entry -- triply indirects \n");
-	// 				curr_block_no = find_triply_indirect(inode_block[index], i, j, k);
-	// 			}
-	// 		}
-	// 		// If we are still working on the same inode
-	// 		if (index == 13) {
-	// 			curr_block_no = find_doubly_indirect(inode_block[index], i, j);
-	// 		}
-	// 	}
-	//
-	// 	else if (index == 14) { //TRIPLY INDIRECT
-	// 		i++;
-	// 		curr_block_no = 0;
-	//
-	// 		if (i == 257) {
-	// 			i = 0;
-	// 			j++;
-	// 			if (j == 257) {
-	// 				j = 0;
-	// 				k++;
-	// 				if (k == 257) {
-	// 					index++;
-	// 				}
-	// 			}
-	// 		}
-	// 		if (index == 14) {
-	// 			curr_block_no = find_triply_indirect(inode_block[index], i, j, k);
-	// 		}
-	// 	}
-	// 	else {
-	// 		printf("what the heck shoulnd't be here\n");
-	// 		exit(1);
-	// 	}
-	// }
-	// return 0;
+	check_directory(NULL, inode_no, &print_file);
+
 }

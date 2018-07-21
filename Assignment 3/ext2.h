@@ -242,13 +242,12 @@ struct ext2_dir_entry_2 {
 
 //------------------------ GLOBAL VARIABLES -------------------------//
 unsigned char * disk;
-unsigned char * block;
 unsigned int block_size;
-unsigned int inode_table_block_no;
 struct ext2_inode * inode_table;
 struct ext2_super_block * sb;
 struct ext2_group_desc * descriptor;
-
+unsigned char * inode_bitmap;
+unsigned char * block_bitmap;
 
 
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
