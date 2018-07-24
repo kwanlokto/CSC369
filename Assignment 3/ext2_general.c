@@ -269,3 +269,36 @@ unsigned int find_triply_indirect(int block_no, int i, int j, int k) {
 	}
 	return 0;
 }
+
+
+void write_file(char *buf) {
+	int block_no;
+	int inode_no;
+	for (int i = 0; i < (sb->s_inodes_count)/(sizeof(unsigned char) * 8); i++) {
+
+                        /* Looping through each bit a byte. */
+                        for (int k = 0; k < 8; k++) {
+				if (!((inode_bitmap[i] >> k) & 1)) {
+					inode_no = i*8 + k;
+				}
+                     	}
+        }
+	for (int i = 0; i < (sb->s_blocks_count)/(sizeof(unsigned char) * 8); i++) {
+
+                        /* Looping through each bit a byte. */
+                        for (int k = 0; k < 8; k++) {
+                        	if (!((block_bitmap[i] >> k) & 1)) {
+					block_no = i*8 + k;
+					inode_table[inode_no].i_block[0] = block_no;
+				}
+                        }
+        }
+
+
+
+	//for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
+		//disk + EXT2_BLOCK_SIZE * block_no + i = buf[i];
+	//}
+
+}
+
