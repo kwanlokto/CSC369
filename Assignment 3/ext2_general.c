@@ -89,7 +89,6 @@ unsigned int path_walk(char * path) {
  * Returns the inode_no number if found
  */
 unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*fun_ptr)(unsigned int, char *)){
-	printf("check dir, block %d\n", inode_no);
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
 	unsigned int * inode_block = inode->i_block;
 	// Initialize all the variables needed
@@ -102,9 +101,6 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 		fprintf(stderr, "something wrong with pathwalk, curr == 0\n");
 		exit(1);
 	}
-	for (int i = 0; i < 15; i++) {
-		printf(" %d ",inode_block[i]);
-	}
 
 	while (block_no != 0) {
 		printf("Checking block no %d in inode no %d at index %d\n",block_no, inode_no, index);
@@ -115,7 +111,6 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 		// printf("%s\n", curr_block->name);
 
 		if (block_no != 0) { //DIRECT
-			printf("%d direct\n", index);
 			// Set the next variables
 			index++;
 			block_no = 0;
@@ -126,7 +121,6 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 
 			} else {
 				block_no = inode_block[index];
-				printf("next block_no %d\n", block_no);
 			}
 		}
 
@@ -199,9 +193,22 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 
 
 unsigned int print_file(unsigned int block_no, char * name) {
-	struct ext2_dir_entry_2 * curr_block = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	printf("file: %s, with inode no: %d\n", curr_block->name, curr_block->inode);
+	if (block_no != 0) {
+
+
+		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+		int inode_no = i_entry->inode;
+
+		int count = 0;
+		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
+			printf("%s\n", i_entry->name);
+			i_entry = (void *)i_entry + i_entry->rec_len;
+			inode_no = i_entry->inode;
+			count+= i_entry->rec_len;
+		}
+	}
 	return 0;
+
 }
 
 
@@ -213,11 +220,22 @@ unsigned int print_file(unsigned int block_no, char * name) {
  */
 unsigned int check_entry(unsigned int block_no, char * name){
 	if (block_no != 0) {
+
+
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-		printf("\ncomparing two names: %s vs %s \n", i_entry -> name, name);
-		printf("name len: %d and next entry: %d\n \n", i_entry->name_len, i_entry->rec_len);
-		if (strcmp(i_entry -> name, name) == 0) {
-			return i_entry->inode;
+		int inode_no = i_entry->inode;
+
+		int count = 0;
+		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
+
+			printf("\ncomparing two names: %s vs %s \n", i_entry->name, name);
+			printf("name len: %d and next entry: %d\n \n", i_entry->name_len, i_entry->rec_len);
+			if (strcmp(i_entry->name, name) == 0) {
+				return i_entry->inode;
+			}
+			i_entry = (void *)i_entry + i_entry->rec_len;
+			inode_no = i_entry->inode;
+			count+= i_entry->rec_len;
 		}
 	}
 	return 0;
