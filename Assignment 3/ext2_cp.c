@@ -1,5 +1,8 @@
 #include "ext2.h"
 
+void write_file(char *buf);
+
+
 int main(int argc, char ** argv){
 	if (argc != 4) {
 		fprintf(stderr, "Requires 3 args\n");
@@ -34,23 +37,33 @@ int main(int argc, char ** argv){
 		exit(1);
 	}
 
-	printf("After path walk");
+
+
+
+
+
+
+	fprintf(stderr, "After path walk\n");
 	struct ext2_inode * dir = inode_table + (dir_inode_no - 1);
 	if (!(dir->i_mode & EXT2_S_IFDIR)) {
 		fprintf(stderr, "Entered directory path does not exist\n");
 		exit(1);
 	}
 
+	fprintf(stderr, "hello\n");
+
 	//---------------------------- open and read the file -------------------------//
 	FILE * file = fopen(file_path, "r");
-	char * buf;
+	char buf[EXT2_BLOCK_SIZE];
 
 	if (file != NULL) {
+		fprintf(stderr, "read\n");
 		while (fread(buf, EXT2_BLOCK_SIZE, 1, file) > 0){
-			for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
-				printf("%c", buf[i]);
-			}
-			//write_file(buf);
+			//printf("%s", buf);
+			// for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
+			// 	printf("%c", buf[i]);
+			 //}
+			write_file(buf);
 		}
 
 	} else {
@@ -60,5 +73,52 @@ int main(int argc, char ** argv){
 
 
 	fclose(file);
+
+}
+
+
+void write_file(char *buf) {
+	static int index = 0;
+
+	int block_no;
+	int inode_no;
+	// for (int i = 0; i < (sb->s_inodes_count)/(sizeof(unsigned char) * 8); i++) {
+	//
+  //   /* Looping through each bit a byte. */
+  //   for (int k = 0; k < 8; k++) {
+	// 		if (!((inode_bitmap[i] >> k) & 1)) {
+	// 			inode_no = i*8 + k;
+	// 		}
+	// 	}
+  // }
+	printf("inode ");
+	inode_no = get_free_spot(inode_bitmap, (sb->s_blocks_count)/(sizeof(unsigned char) * 8));
+	take_spot(inode_bitmap, inode_no);
+
+
+
+	// for (int i = 0; i < (sb->s_blocks_count)/(sizeof(unsigned char) * 8); i++) {
+	//
+	//
+  //   /* Looping through each bit a byte. */
+  //   for (int k = 0; k < 8; k++) {
+  //     if (!((block_bitmap[i] >> k) & 1)) {
+	// 			block_no = i*8 + k;
+	// 			inode_table[inode_no].i_block[0] = block_no;
+	// 		}
+	// 	}
+	// }
+
+
+
+	printf("block ");
+	block_no = get_free_spot(block_bitmap, (sb->s_blocks_count)/(sizeof(unsigned char) * 8));
+	take_spot(block_bitmap, block_no);
+
+
+	inode_table[inode_no].i_block[index] = block_no;
+	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
+	strncpy(modify, buf, EXT2_BLOCK_SIZE);
+	index++;
 
 }

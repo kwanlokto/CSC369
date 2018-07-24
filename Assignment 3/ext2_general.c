@@ -67,18 +67,19 @@ unsigned int path_walk(char * path) {
 	struct ext2_inode * curr;
 
   while (token != NULL) {
+		printf("enetere");
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR)) {
 			fprintf(stderr, "working on a file\n");
 			exit(1);
 		}
 		inode_no = check_directory(token, inode_no, &check_entry);
-		if (!(inode_no > 0)) {
+		printf("check %d\n", inode_no);
+		if (!inode_no) {
 			return inode_no;
 		}
     token = strtok(NULL, "/");
   }
-
 	return inode_no;
 }
 
@@ -271,34 +272,52 @@ unsigned int find_triply_indirect(int block_no, int i, int j, int k) {
 }
 
 
-void write_file(char *buf) {
-	int block_no;
-	int inode_no;
-	for (int i = 0; i < (sb->s_inodes_count)/(sizeof(unsigned char) * 8); i++) {
+/*
+ * Extracts the filename and dir from the path
+ */
+// void split_path(char * path, char * name, char * dir) {
+// 	int count = 0;
+// 	while (path[count] != '\0') {
+// 		char file[EXT2_NAME_LEN];
+// 		while (path[count] != '\0' && path[count] != '/' ) {
+// 			strcat(file, path[count]);
+// 			count++;
+// 		}
+//
+// 		// indicating the last file in the path
+// 		if (path[count] != '/') {
+// 			strcat(name, file);
+// 		} else {
+// 			strcat(dir, file);
+// 			strcat(dir, "/");
+// 		}
+//
+// 		count++;
+// 	}
+// }
 
-                        /* Looping through each bit a byte. */
-                        for (int k = 0; k < 8; k++) {
-				if (!((inode_bitmap[i] >> k) & 1)) {
-					inode_no = i*8 + k;
+int get_free_spot(unsigned char * bitmap, int max) {
+	for (int i = 0; i < max; i++) {
+
+			/* Looping through each bit a byte. */
+			for (int k = 0; k < 8; k++) {
+				int bit = (bitmap[i] >> k) & 1;
+				if (!bit) {
+					int index = i * 8 + k;
+					printf("index: %d\n", index);
+					return index;
 				}
-                     	}
-        }
-	for (int i = 0; i < (sb->s_blocks_count)/(sizeof(unsigned char) * 8); i++) {
-
-                        /* Looping through each bit a byte. */
-                        for (int k = 0; k < 8; k++) {
-                        	if (!((block_bitmap[i] >> k) & 1)) {
-					block_no = i*8 + k;
-					inode_table[inode_no].i_block[0] = block_no;
-				}
-                        }
-        }
-
-
-
-	//for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
-		//disk + EXT2_BLOCK_SIZE * block_no + i = buf[i];
-	//}
-
+			}
+	}
+	return -1;
 }
 
+int take_spot(unsigned char * bitmap, int index) {
+	int bit_map_byte = index / 8;
+	int bit_order = index % 8;
+	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
+		fprintf(stderr, "trying to write to a taken spot\n");
+		exit(1);
+	}
+	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
+}
