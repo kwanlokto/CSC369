@@ -192,7 +192,7 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 
 
 
-unsigned int print_file(unsigned int block_no, char * name) {
+unsigned int print_file(unsigned int block_no, char * flag) {
 	if (block_no != 0) {
 
 
@@ -201,7 +201,12 @@ unsigned int print_file(unsigned int block_no, char * name) {
 
 		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
-			printf("%s\n", i_entry->name);
+			char * name = i_entry -> name;
+
+			// Check to see if hidden files are allowed
+			if (flag != NULL || !(name[0] == '.')) {
+				printf("%s\n", i_entry->name);
+			}
 			i_entry = (void *)i_entry + i_entry->rec_len;
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;

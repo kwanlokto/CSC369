@@ -12,13 +12,13 @@ int main(int argc, char ** argv){
 	// ------------------------ convert the arguments -----------------------//
 	char * virtual_disk = NULL;
 	char * path = NULL;
-	bool flag = false;
+	char * flag = NULL;
 	//check if flag -a not specified
 	if (argc == 3) {
 		virtual_disk = argv[1];
 		path = argv[2];
-	} else if (strcmp(argv[2], "-a") == 0){
-		flag = true;
+	} else if (strcmp(argv[1], "-a") == 0){
+		flag = "set flag\n";
 		virtual_disk = argv[2];
 		path = argv[3];
 	} else {
@@ -45,6 +45,6 @@ int main(int argc, char ** argv){
 
 
 	//-------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ----------------//
-	check_directory(NULL, inode_no, &print_file);
+	check_directory(flag, inode_no, &print_file);
 
 }
