@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/mman.h>
 
 #ifndef CSC369A3_EXT2_FS_H
