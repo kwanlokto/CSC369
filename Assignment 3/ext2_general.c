@@ -204,12 +204,12 @@ unsigned int print_file(unsigned int block_no, char * flag) {
 			char * name = i_entry -> name;
 
 			// Check to see if hidden files are allowed
-			if (flag != NULL || !(name[0] == '.')) {
+			if (flag != NULL || (strlen(name) > 0 && !(name[0] == '.'))) {
 				printf("%s\n", i_entry->name);
 			}
-			i_entry = (void *)i_entry + i_entry->rec_len;
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
+			i_entry = (void *)i_entry + i_entry->rec_len;
 		}
 	}
 	return 0;
@@ -233,14 +233,14 @@ unsigned int check_entry(unsigned int block_no, char * name){
 		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
 
-			printf("\ncomparing two names: %s vs %s \n", i_entry->name, name);
-			printf("name len: %d and next entry: %d\n \n", i_entry->name_len, i_entry->rec_len);
+			printf("comparing two names: %s vs %s \n \n", i_entry->name, name);
 			if (strcmp(i_entry->name, name) == 0) {
 				return i_entry->inode;
 			}
-			i_entry = (void *)i_entry + i_entry->rec_len;
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
+			i_entry = (void *)i_entry + i_entry->rec_len;
+
 		}
 	}
 	return 0;
