@@ -31,11 +31,11 @@ int main(int argc, char ** argv){
 	open_image(virtual_disk);
 
 
-	//--------------------------- setup datastructures ----------------------//
+	//--------------------------- setup datastructures -----------------------//
 	init_datastructures();
 
 
-	//--------------------m-------- go to the paths inode ----------------------//
+	//---------------------------- go to the paths inode ----------------------//
 	unsigned int inode_no;
 	if (!(inode_no = path_walk(path))) {
 		fprintf(stderr, "not a valid path\n");
@@ -45,6 +45,11 @@ int main(int argc, char ** argv){
 
 
 	//-------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ----------------//
+	struct ext2_inode * dir = inode_table + (inode_no - 1);
+	if (!(dir->i_mode & EXT2_S_IFDIR)) {
+		fprintf(stderr, "working on a file\n");
+		exit(1);
+	}
 	check_directory(flag, inode_no, &print_file);
 
 }
