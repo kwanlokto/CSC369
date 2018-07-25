@@ -1,5 +1,8 @@
 #include "ext2.h"
 
+/*
+ * All extern variables
+ */
 extern unsigned char * disk;
 extern unsigned int block_size;
 extern struct ext2_inode * inode_table;
@@ -7,7 +10,11 @@ extern struct ext2_super_block * sb;
 extern struct ext2_group_desc * descriptor;
 extern unsigned char * inode_bitmap;
 extern unsigned char * block_bitmap;
-
+extern int i_bitmap_size;
+extern int b_bitmap_size;
+/*
+ * Initializes all global variables
+ */
 void init_datastructures() {
 	// Referenced from https://wiki.osdev.org/Ext2
 	// and http://www.nongnu.org/ext2-doc/ext2.html#S-LOG-BLOCK-SIZE
@@ -45,7 +52,9 @@ void init_datastructures() {
 }
 
 
-
+/*
+ * Open the image and initailize the disk
+ */
 void open_image(char * virtual_disk) {
 	int fd = open(virtual_disk, O_RDWR);
 
@@ -58,7 +67,8 @@ void open_image(char * virtual_disk) {
 
 
 /*
- * Returns the inode number of the path to file
+ * Returns the inode number of file that is at the end of the path.
+ * If the file is not found then return 0
  */
 unsigned int path_walk(char * path) {
 
@@ -78,7 +88,7 @@ unsigned int path_walk(char * path) {
 		inode_no = check_directory(token, inode_no, &check_entry);
 		printf("check %d\n", inode_no);
 		if (!inode_no) {
-			return inode_no;
+			return 0;
 		}
     token = strtok(NULL, "/");
   }
@@ -89,7 +99,7 @@ unsigned int path_walk(char * path) {
 /*
  * Checks to see whether or not the file with file name 'name' is in the
  * current working directory
- * Returns the inode_no number if found
+ * Returns the inode_no number if found. Otherwise return 0
  */
 unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*fun_ptr)(unsigned int, char *)){
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
@@ -97,6 +107,7 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 	// Initialize all the variables needed
 	int index = 0;
 	unsigned int block_no = inode_block[index];
+
 	int i = 0;
 	int j = 0;
 	int k = 0;
@@ -113,7 +124,7 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 		}
 		// printf("%s\n", curr_block->name);
 
-		if (block_no != 0) { //DIRECT
+		if (index < 12) { //DIRECT
 			// Set the next variables
 			index++;
 			block_no = 0;
@@ -191,11 +202,12 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 
 
 
-
+/*
+ * Looks for all the files in the block block_no. Print all files except for
+ * the hidden files if flag is NULL. If flag is not NULL the print all files.
+ */
 unsigned int print_file(unsigned int block_no, char * flag) {
 	if (block_no != 0) {
-
-
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
 
@@ -246,6 +258,11 @@ unsigned int check_entry(unsigned int block_no, char * name){
 	return 0;
 }
 
+
+/*
+ * Returns the inode_no of the pointed inode block from the singly indirect table
+ * if it is found. Otherwise return 0
+ */
 unsigned int find_singly_indirect(int block_no, int i){
 	if (block_no != 0) {
 		unsigned int * singly_indirect = (unsigned int *)(disk + block_no * block_size);
@@ -254,6 +271,11 @@ unsigned int find_singly_indirect(int block_no, int i){
 	return 0;
 }
 
+
+/*
+ * Returns the inode_no of the pointed inode block from the doubly indirect table
+ * if it is found. Otherwise return 0
+ */
 unsigned int find_doubly_indirect(int block_no, int i, int j) {
 	if (block_no != 0) {
 		unsigned int * doubly_indirect = (unsigned int *)(disk + block_no * block_size);
@@ -262,6 +284,10 @@ unsigned int find_doubly_indirect(int block_no, int i, int j) {
 	return 0;
 }
 
+/*
+ * Returns the inode_no of the pointed inode block from the triply indirect table
+ * if it is found. Otherwise return 0
+ */
 unsigned int find_triply_indirect(int block_no, int i, int j, int k) {
 	if (block_no != 0) {
 		unsigned int * triply_indirect = (unsigned int *)(disk + block_no * block_size);
@@ -295,7 +321,11 @@ void split_path(char * path, char * name, char * dir) {
 	}
 }
 
-int get_free_spot(unsigned char * bitmap, int max) {
+/*
+ * Searches the entire bitmap and returns the index of the bitmap with a free
+ * spot. If no free spot is found return -ENOMEM
+ */
+int search_bitmap(unsigned char * bitmap, int max) {
 	for (int i = 0; i < max; i++) {
 
 			/* Looping through each bit a byte. */
@@ -308,10 +338,14 @@ int get_free_spot(unsigned char * bitmap, int max) {
 				}
 			}
 	}
-	return -1;
+	return -ENOMEM;
 }
 
-int take_spot(unsigned char * bitmap, int index) {
+
+/*
+ * Update the bitmap, and set the bit at index 'index' to 1
+ */
+void take_spot(unsigned char * bitmap, int index) {
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
@@ -322,8 +356,12 @@ int take_spot(unsigned char * bitmap, int index) {
 }
 
 
-
-int get_free_entry(unsigned int dir_inode_no, unsigned int inode_no) {
+/*
+ * Searches all i_block in the struct ext2_inode and looks for a free entry
+ * and inserts the new inode_no into that entry.
+ * Returns 0 if successful and returns -ENOMEM if unsucessful.
+ */
+int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no) {
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 
 	int index = 0;
@@ -334,15 +372,19 @@ int get_free_entry(unsigned int dir_inode_no, unsigned int inode_no) {
 
 	while (index < 15) {
 		if (index < 12) { // DIRECT
-			if (inode_block[index] == 0) {
+			if (!inode_block[index]) {
 				inode_block[index] = inode_no;
 				return 0;
 			}
 			index++;
 		}
+
 		else if (index == 12) { //SINGLY INDIRECT
 			if (!inode_block[index]) { //no singly indirect table
-				unsigned int singly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+				int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (singly_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
 				take_spot(block_bitmap, singly_block_no);
 				inode_block[index] = singly_block_no;
 				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
@@ -361,25 +403,96 @@ int get_free_entry(unsigned int dir_inode_no, unsigned int inode_no) {
 			}
 		}
 
+
 		else if (index == 13) { //DOUBLY INDIRECT
 			if (!inode_block[index]) { //no doubly indirect table
-				unsigned int doubly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+				int doubly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (doubly_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
 				take_spot(block_bitmap, doubly_block_no);
 				inode_block[index] = doubly_block_no;
 				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
 				// singly_indirect[i] = inode_no;
 				// return 0;
 			}
-			if (!find_doubly_indirect(inode_block[index], i, j)) {
-				unsigned int singly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+			unsigned int * doubly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+			if (!doubly_indirect[i]) {
+				int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (singly_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
 				take_spot(block_bitmap, singly_block_no);
-				inode_block[index] = singly_block_no;
+				doubly_indirect[i] = singly_block_no;
+			}
+			if (!find_singly_indirect(doubly_indirect[i], j)){
+				unsigned int * singly_indirect = (unsigned int *)(disk + doubly_indirect[i] * block_size);
+				singly_indirect[j] = inode_no;
+				return 0;
+			}
+
+			i++;
+			if (i == 257) {
+				j++;
+				i = 0;
+				if (j == 257) {
+					index++;
+					j = 0;
+				}
 			}
 		}
 
+
 		else if (index == 14) { //TRIPLY INDIRECT
+			if (!inode_block[index]) { //no triply indirect table
+				unsigned int triply_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (triply_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
+				take_spot(block_bitmap, triply_block_no);
+				inode_block[index] = triply_block_no;
+				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+				// singly_indirect[i] = inode_no;
+				// return 0;
+			}
+			unsigned int * triply_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+			if (!triply_indirect[i]) {
+				unsigned int doubly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (doubly_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
+				take_spot(block_bitmap, doubly_block_no);
+				triply_indirect[i] = doubly_block_no;
+			}
+			unsigned int * doubly_indirect = (unsigned int *)(disk + triply_indirect[i] * block_size);
+			if (!doubly_indirect[j])){
+				unsigned int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+				if (singly_block_no == -ENOMEM) {
+					return -ENOMEM;
+				}
+				take_spot(block_bitmap, singly_block_no);
+				doubly_indirect[i] = singly_block_no;
+			}
+			if (!find_singly_indirect(doubly_indirect[j], k)){
+				unsigned int * singly_indirect = (unsigned int *)(disk + doubly_indirect[j] * block_size);
+				singly_indirect[j] = inode_no;
+				return 0;
+			}
 
+			i++;
+			if (i == 257){
+				j++;
+				i = 0;
+				if (j == 257) {
+					k++;
+					j = 0;
+					if (k == 257) {
+						k = 0;
+						index++;
+					}
+				}
+			}
 		}
-
 	}
+	return -ENOMEM;
 }

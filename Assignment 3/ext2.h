@@ -265,5 +265,7 @@ unsigned int find_singly_indirect(int block_no, int i);
 unsigned int find_doubly_indirect(int block_no, int i, int j);
 unsigned int find_triply_indirect(int block_no, int i, int j, int k);
 unsigned int print_file(unsigned int block_no, char * name);
-int get_free_spot(unsigned char * bitmap, int max);
+int search_bitmap(unsigned char * bitmap, int max);
 void split_path(char * path, char * name, char * dir);
+void take_spot(unsigned char * bitmap, int index);
+int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no);

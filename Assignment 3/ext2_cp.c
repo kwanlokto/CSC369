@@ -92,7 +92,11 @@ void write_file(char *buf) {
 	// 	}
   // }
 	printf("inode ");
-	inode_no = get_free_spot(inode_bitmap, i_bitmap_size);
+	inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+	if (inode_no == -ENOMEM) {
+		fprintf("no space in the inode bitmap\n");
+		return -ENOMEM;
+	}
 	take_spot(inode_bitmap, inode_no);
 
 
@@ -112,7 +116,11 @@ void write_file(char *buf) {
 
 
 	printf("block ");
-	block_no = get_free_spot(block_bitmap, b_bitmap_size);
+	block_no = search_bitmap(block_bitmap, b_bitmap_size);
+	if (block_no == -ENOMEM) {
+		fprintf("no space in the block bitmap\n");
+		return -ENOMEM;
+	}
 	take_spot(block_bitmap, block_no);
 
 
