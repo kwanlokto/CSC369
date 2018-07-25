@@ -1,6 +1,6 @@
 #include "ext2.h"
 
-void write_file(char *buf);
+int write_file(char *buf);
 
 
 int main(int argc, char ** argv){
@@ -77,7 +77,7 @@ int main(int argc, char ** argv){
 }
 
 
-void write_file(char *buf) {
+int write_file(char *buf) {
 	static int index = 0;
 
 	int block_no;
@@ -94,7 +94,7 @@ void write_file(char *buf) {
 	printf("inode ");
 	inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
 	if (inode_no == -ENOMEM) {
-		fprintf("no space in the inode bitmap\n");
+		fprintf(stderr, "no space in the inode bitmap\n");
 		return -ENOMEM;
 	}
 	take_spot(inode_bitmap, inode_no);
@@ -118,7 +118,7 @@ void write_file(char *buf) {
 	printf("block ");
 	block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (block_no == -ENOMEM) {
-		fprintf("no space in the block bitmap\n");
+		fprintf(stderr, "no space in the block bitmap\n");
 		return -ENOMEM;
 	}
 	take_spot(block_bitmap, block_no);
@@ -128,5 +128,5 @@ void write_file(char *buf) {
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
 	index++;
-
+	return 0;
 }

@@ -27,8 +27,8 @@ void init_datastructures() {
 	inode_bitmap = disk + descriptor -> bg_inode_bitmap * block_size;
 	block_bitmap = disk + descriptor -> bg_block_bitmap * block_size;
 
-	i_bitmap_size = sb->s_inodes_count)/(sizeof(unsigned char) * 8;
-	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8;
+	i_bitmap_size = (sb->s_inodes_count)/(sizeof(unsigned char) * 8);
+	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8);
 	printf("inode_bitmap: ");
 	for (int i = 0; i < i_bitmap_size; i++) {
 
@@ -305,7 +305,7 @@ void split_path(char * path, char * name, char * dir) {
 	while (path[count] != '\0') {
 		char file[EXT2_NAME_LEN];
 		while (path[count] != '\0' && path[count] != '/' ) {
-			strcat(file, path[count]);
+			strcat(file, &path[count]);
 			count++;
 		}
 
@@ -465,7 +465,7 @@ int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no) {
 				triply_indirect[i] = doubly_block_no;
 			}
 			unsigned int * doubly_indirect = (unsigned int *)(disk + triply_indirect[i] * block_size);
-			if (!doubly_indirect[j])){
+			if (!doubly_indirect[j]){
 				unsigned int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 				if (singly_block_no == -ENOMEM) {
 					return -ENOMEM;
