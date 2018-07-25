@@ -59,10 +59,11 @@ int create_inode(int free_inode){
 	struct ext2_inode * new_inode = inode_table + (free_indoe - 1);
 
 	// How to set it to a directory ????
-	new_inode->i_mode = EXT2_S_IFDIR;
+	new_inode->i_mode = new_inode->imode | EXT2_S_IFDIR;
 
 	for (int i = 0; i < 15; i++) {
 		(new_inode -> i_block)[i] = 0;
 		// How to set create time ???
+		
 	}
 }

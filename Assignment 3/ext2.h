@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <time.h>
 
 #ifndef CSC369A3_EXT2_FS_H
 #define CSC369A3_EXT2_FS_H
@@ -262,3 +263,4 @@ unsigned int find_doubly_indirect(int block_no, int i, int j);
 unsigned int find_triply_indirect(int block_no, int i, int j, int k);
 unsigned int print_file(unsigned int block_no, char * name);
 int get_free_spot(unsigned char * bitmap, int max);
+void split_path(char * path, char * name, char * dir);

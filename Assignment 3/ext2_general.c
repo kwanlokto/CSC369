@@ -275,26 +275,26 @@ unsigned int find_triply_indirect(int block_no, int i, int j, int k) {
 /*
  * Extracts the filename and dir from the path
  */
-// void split_path(char * path, char * name, char * dir) {
-// 	int count = 0;
-// 	while (path[count] != '\0') {
-// 		char file[EXT2_NAME_LEN];
-// 		while (path[count] != '\0' && path[count] != '/' ) {
-// 			strcat(file, path[count]);
-// 			count++;
-// 		}
-//
-// 		// indicating the last file in the path
-// 		if (path[count] != '/') {
-// 			strcat(name, file);
-// 		} else {
-// 			strcat(dir, file);
-// 			strcat(dir, "/");
-// 		}
-//
-// 		count++;
-// 	}
-// }
+void split_path(char * path, char * name, char * dir) {
+	int count = 0;
+	while (path[count] != '\0') {
+		char file[EXT2_NAME_LEN];
+		while (path[count] != '\0' && path[count] != '/' ) {
+			strcat(file, path[count]);
+			count++;
+		}
+
+		// indicating the last file in the path
+		if (path[count] != '/') {
+			strcat(name, file);
+		} else {
+			strcat(dir, file);
+			strcat(dir, "/");
+		}
+
+		count++;
+	}
+}
 
 int get_free_spot(unsigned char * bitmap, int max) {
 	for (int i = 0; i < max; i++) {
