@@ -1,5 +1,9 @@
 #include "ext2.h"
 
+
+void create_inode(int free_inode);
+int create_file(unsigned int dir_inode_no, char * path);
+
 int main(int argc, char ** argv) {
 	if (argc != 3) {
 		fprintf(stderr, "Requires 2 args\n");
@@ -7,7 +11,7 @@ int main(int argc, char ** argv) {
 	}
 
 	char * virtual_disk = argv[1];
-	char * name = argv[2];
+	char * path = argv[2];
 
 	//---------------------------- open the image ---------------------------//
 	open_image(virtual_disk);
@@ -24,7 +28,7 @@ int main(int argc, char ** argv) {
 		return -ENOENT;
 	}
 
-	int check = create_file(dir_inode_no, );
+	return create_file(dir_inode_no, path);
 
 }
 
@@ -35,12 +39,12 @@ int create_file(unsigned int dir_inode_no, char * path) {
 	printf("path: %s, file: %s, dir: %s", path, file, dir);
 
 	// Checks to see if the file already exists
-	unsigned int inode_no = check_directory(file, inode_no, &check_entry);
+	unsigned int inode_no = check_directory(file, dir_inode_no, &check_entry);
 	if (inode_no) {
 		struct ext2_inode * check_inode = inode_table + (inode_no - 1);
 		if (check_inode->i_mode & EXT2_S_IFDIR) {
 			fprintf(stderr, "directory already exists\n");
-			return -EEXISTS;
+			return -EEXIST;
 		}
 	}
 
@@ -55,14 +59,14 @@ int create_file(unsigned int dir_inode_no, char * path) {
 
 
 
-
+	return 0;
 }
 
 void create_inode(int free_inode){
 	struct ext2_inode * new_inode = inode_table + (free_inode - 1);
 
 	// How to set it to a directory ????
-	new_inode->i_mode = new_inode->imode | EXT2_S_IFDIR;
+	new_inode->i_mode = new_inode->i_mode | EXT2_S_IFDIR;
 
 	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
 	// Set the creation time
