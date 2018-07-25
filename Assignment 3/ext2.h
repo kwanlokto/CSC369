@@ -251,6 +251,9 @@ struct ext2_group_desc * descriptor;
 unsigned char * inode_bitmap;
 unsigned char * block_bitmap;
 
+int i_bitmap_size;
+int b_bitmap_size;
+
 
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();

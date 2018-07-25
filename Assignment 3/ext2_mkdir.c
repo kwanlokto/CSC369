@@ -42,28 +42,40 @@ int create_file(unsigned int dir_inode_no, char * path) {
 
 
 
-	int max = (sb->s_inodes_count)/(sizeof(unsigned char) * 8);
 	int free_inode;
-	if ((free_inode= get_free_spot(inode_bitmap, max)) == -1) {
+	if ((free_inode= get_free_spot(inode_bitmap, i_bitmap_size)) == -1) {
 		fprintf(stderr, "no free inode space\n");
 		return -ENOMEM;
 	}
+	take_spot(inode_bitmap, free_inode);
 
 	create_inode(free_inode);
 
-	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
+
+
 
 }
 
 int create_inode(int free_inode){
-	struct ext2_inode * new_inode = inode_table + (free_indoe - 1);
+	struct ext2_inode * new_inode = inode_table + (free_inode - 1);
 
 	// How to set it to a directory ????
 	new_inode->i_mode = new_inode->imode | EXT2_S_IFDIR;
 
+	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
+	time_t rawtime;
+	struct tm * timeinfo;
+
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+	printf ( "Current local time and date: %s", asctime (timeinfo) );
+
+	new_inode->i_ctime = (unsigned int) timeinfo;
 	for (int i = 0; i < 15; i++) {
 		(new_inode -> i_block)[i] = 0;
 		// How to set create time ???
-		
+
+
+
 	}
 }

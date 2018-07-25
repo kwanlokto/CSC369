@@ -20,8 +20,10 @@ void init_datastructures() {
 	inode_bitmap = disk + descriptor -> bg_inode_bitmap * block_size;
 	block_bitmap = disk + descriptor -> bg_block_bitmap * block_size;
 
+	i_bitmap_size = sb->s_inodes_count)/(sizeof(unsigned char) * 8;
+	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8;
 	printf("inode_bitmap: ");
-	for (int i = 0; i < (sb->s_inodes_count)/(sizeof(unsigned char) * 8); i++) {
+	for (int i = 0; i < i_bitmap_size; i++) {
 
 			/* Looping through each bit a byte. */
 			for (int k = 0; k < 8; k++) {
@@ -31,7 +33,7 @@ void init_datastructures() {
 	}
 	printf("\n");
 	printf("block_bitmap: ");
-	for (int i = 0; i < (sb->s_blocks_count)/(sizeof(unsigned char) * 8); i++) {
+	for (int i = 0; i < b_bitmap_size; i++) {
 
 			/* Looping through each bit a byte. */
 			for (int k = 0; k < 8; k++) {
@@ -173,18 +175,15 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 				if (j == 257) {
 					j = 0;
 					k++;
-					if (k == 257) {
+					if (k == 257) { //searched the entire thing but doesn't exist
 						index++;
+						block_no = 0;
 					}
 				}
 			}
 			if (index == 14) {
 				block_no = find_triply_indirect(inode_block[index], i, j, k);
 			}
-		}
-		else {
-			printf("what the heck shoulnd't be here\n");
-			exit(1);
 		}
 	}
 	return 0;
@@ -320,4 +319,67 @@ int take_spot(unsigned char * bitmap, int index) {
 		exit(1);
 	}
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
+}
+
+
+
+int get_free_entry(unsigned int dir_inode_no, unsigned int inode_no) {
+	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
+
+	int index = 0;
+	int i = 0;
+	int j = 0;
+	int k = 0;
+	unsigned int * inode_block = dir_inode->i_block;
+
+	while (index < 15) {
+		if (index < 12) { // DIRECT
+			if (inode_block[index] == 0) {
+				inode_block[index] = inode_no;
+				return 0;
+			}
+			index++;
+		}
+		else if (index == 12) { //SINGLY INDIRECT
+			if (!inode_block[index]) { //no singly indirect table
+				unsigned int singly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+				take_spot(block_bitmap, singly_block_no);
+				inode_block[index] = singly_block_no;
+				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+				// singly_indirect[i] = inode_no;
+				// return 0;
+			}
+			if (!find_singly_indirect(inode_block[index], i)) { //entry i is free
+				unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+				singly_indirect[i] = inode_no;
+				return 0;
+			}
+			i++;
+			if (i == 257) {
+				index++;
+				i = 0;
+			}
+		}
+
+		else if (index == 13) { //DOUBLY INDIRECT
+			if (!inode_block[index]) { //no doubly indirect table
+				unsigned int doubly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+				take_spot(block_bitmap, doubly_block_no);
+				inode_block[index] = doubly_block_no;
+				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
+				// singly_indirect[i] = inode_no;
+				// return 0;
+			}
+			if (!find_doubly_indirect(inode_block[index], i, j)) {
+				unsigned int singly_block_no = get_free_spot(block_bitmap, b_bitmap_size);
+				take_spot(block_bitmap, singly_block_no);
+				inode_block[index] = singly_block_no;
+			}
+		}
+
+		else if (index == 14) { //TRIPLY INDIRECT
+
+		}
+
+	}
 }

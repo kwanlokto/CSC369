@@ -92,7 +92,7 @@ void write_file(char *buf) {
 	// 	}
   // }
 	printf("inode ");
-	inode_no = get_free_spot(inode_bitmap, (sb->s_blocks_count)/(sizeof(unsigned char) * 8));
+	inode_no = get_free_spot(inode_bitmap, i_bitmap_size);
 	take_spot(inode_bitmap, inode_no);
 
 
@@ -112,7 +112,7 @@ void write_file(char *buf) {
 
 
 	printf("block ");
-	block_no = get_free_spot(block_bitmap, (sb->s_blocks_count)/(sizeof(unsigned char) * 8));
+	block_no = get_free_spot(block_bitmap, b_bitmap_size);
 	take_spot(block_bitmap, block_no);
 
 
