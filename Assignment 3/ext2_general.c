@@ -352,15 +352,16 @@ void create_inode(int free_inode, int file_type){
 	} else if (file_type == EXT2_FT_SYMLINK) {
 		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFLNK;
 	}
-
+	new_inode->i_dtime = 0; // remove deletion time
+	new_inode->i_links_count = 1;
 	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
 	// Set the creation time
-	time_t rawtime;
-	struct tm * timeinfo;
-	time ( &rawtime );
-	timeinfo = localtime ( &rawtime );
-	printf ( "Current local time and date: %s", asctime (timeinfo) );
-	new_inode->i_ctime = (unsigned int) timeinfo;
+	// time_t rawtime;
+	// struct tm * timeinfo;
+	// time ( &rawtime );
+	// timeinfo = localtime ( &rawtime );
+	// printf ( "Current local time and date: %s", asctime (timeinfo) );
+	// new_inode->i_ctime = (unsigned int) timeinfo;
 
 	//Initialize the i_block to be all 0
 	for (int i = 0; i < 15; i++) {
