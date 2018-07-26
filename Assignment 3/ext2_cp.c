@@ -1,6 +1,6 @@
 #include "ext2.h"
 
-int write_file(char *buf);
+int write_file(char *buf, int inode_no);
 
 
 int main(int argc, char ** argv){
@@ -58,12 +58,23 @@ int main(int argc, char ** argv){
 
 	if (file != NULL) {
 		fprintf(stderr, "read\n");
+
+		int inode_no;
+		printf("inode ");
+		inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+		if (inode_no == -ENOMEM) {
+			fprintf(stderr, "no space in the inode bitmap\n");
+			return -ENOMEM;
+		}
+		take_spot(inode_bitmap, inode_no);
+
+		create_inode(inode_no, EXT2_FT_REG_FILE);
 		while (fread(buf, EXT2_BLOCK_SIZE, 1, file) > 0){
 			//printf("%s", buf);
 			// for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
 			// 	printf("%c", buf[i]);
 			 //}
-			write_file(buf);
+			write_file(buf, inode_no);
 		}
 
 	} else {
@@ -77,27 +88,11 @@ int main(int argc, char ** argv){
 }
 
 
-int write_file(char *buf) {
+int write_file(char *buf, int inode_no) {
 	static int index = 0;
 
 	int block_no;
-	int inode_no;
-	// for (int i = 0; i < (sb->s_inodes_count)/(sizeof(unsigned char) * 8); i++) {
-	//
-  //   /* Looping through each bit a byte. */
-  //   for (int k = 0; k < 8; k++) {
-	// 		if (!((inode_bitmap[i] >> k) & 1)) {
-	// 			inode_no = i*8 + k;
-	// 		}
-	// 	}
-  // }
-	printf("inode ");
-	inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
-	if (inode_no == -ENOMEM) {
-		fprintf(stderr, "no space in the inode bitmap\n");
-		return -ENOMEM;
-	}
-	take_spot(inode_bitmap, inode_no);
+
 
 
 
@@ -122,11 +117,12 @@ int write_file(char *buf) {
 		return -ENOMEM;
 	}
 	take_spot(block_bitmap, block_no);
-
+	print_bitmap(b_bitmap_size, block_bitmap);
 
 	inode_table[inode_no].i_block[index] = block_no;
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
 	index++;
+
 	return 0;
 }

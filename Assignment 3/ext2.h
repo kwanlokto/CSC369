@@ -259,12 +259,25 @@ int b_bitmap_size;
 void init_datastructures();
 void open_image(char * virtual_disk);
 unsigned int path_walk(char * path);
-unsigned int check_directory(char * name, unsigned int block_no, unsigned int (*fun_ptr)(unsigned int, char *));
-unsigned int check_entry(unsigned int block_no, char * name);
-unsigned int find_singly_indirect(int block_no, int i);
-unsigned int find_doubly_indirect(int block_no, int i, int j);
-unsigned int find_triply_indirect(int block_no, int i, int j, int k);
-unsigned int print_file(unsigned int block_no, char * name);
+// unsigned int check_directory(char * name, unsigned int block_no, unsigned int (*fun_ptr)(unsigned int, char *));
+// unsigned int check_entry(unsigned int block_no, char * name);
+// unsigned int print_file(unsigned int block_no, char * name);
+// unsigned int find_singly_indirect(int block_no, int i);
+// unsigned int find_doubly_indirect(int block_no, int i, int j);
+// unsigned int find_triply_indirect(int block_no, int i, int j, int k);
+
+int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
+int check_entry(unsigned int * block, int block_idx, char * name, int checking_free);
+int print_file(unsigned int * block, int block_idx, char * name, int include_all);
+int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
+void create_inode(int free_inode, int file_type);
+
+unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index);
+unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index);
+unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index);
+
+
+void print_bitmap(int bitmap_size, unsigned char * bitmap);
 int search_bitmap(unsigned char * bitmap, int max);
 void split_path(char * path, char * name, char * dir);
 void take_spot(unsigned char * bitmap, int index);

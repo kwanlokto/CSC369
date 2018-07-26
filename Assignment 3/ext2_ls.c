@@ -12,14 +12,14 @@ int main(int argc, char ** argv){
 	// ------------------------ convert the arguments -----------------------//
 	char * virtual_disk = NULL;
 	char * path = NULL;
-	char * flag = NULL;
+	int check_all = 0;
 	//check if flag -a not specified
 	if (argc == 3) {
 		virtual_disk = argv[1];
 		path = argv[2];
-	} else if (strcmp(argv[1], "-a") == 0){
-		flag = "set flag\n";
-		virtual_disk = argv[2];
+	} else if (!strcmp(argv[2], "-a")){
+		check_all = 1;
+		virtual_disk = argv[1];
 		path = argv[3];
 	} else {
 		fprintf(stderr, "unknown flag specified");
@@ -50,6 +50,6 @@ int main(int argc, char ** argv){
 		fprintf(stderr, "working on a file\n");
 		exit(1);
 	}
-	check_directory(flag, inode_no, &print_file);
+	check_directory(NULL, inode_no, check_all, &print_file);
 
 }

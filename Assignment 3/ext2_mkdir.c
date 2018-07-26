@@ -39,7 +39,7 @@ int create_file(unsigned int dir_inode_no, char * path) {
 	printf("path: %s, file: %s, dir: %s", path, file, dir);
 
 	// Checks to see if the file already exists
-	unsigned int inode_no = check_directory(file, dir_inode_no, &check_entry);
+	unsigned int inode_no = check_directory(file, dir_inode_no, 1, &check_entry);
 	if (inode_no) {
 		struct ext2_inode * check_inode = inode_table + (inode_no - 1);
 		if (check_inode->i_mode & EXT2_S_IFDIR) {
@@ -60,27 +60,4 @@ int create_file(unsigned int dir_inode_no, char * path) {
 
 
 	return 0;
-}
-
-void create_inode(int free_inode){
-	struct ext2_inode * new_inode = inode_table + (free_inode - 1);
-
-	// How to set it to a directory ????
-	new_inode->i_mode = new_inode->i_mode | EXT2_S_IFDIR;
-
-	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
-	// Set the creation time
-	time_t rawtime;
-	struct tm * timeinfo;
-	time ( &rawtime );
-	timeinfo = localtime ( &rawtime );
-	printf ( "Current local time and date: %s", asctime (timeinfo) );
-	new_inode->i_ctime = (unsigned int) timeinfo;
-
-	//Initialize the i_block to be all 0
-	for (int i = 0; i < 15; i++) {
-		(new_inode -> i_block)[i] = 0;
-	}
-
-	//need to create a pointer to previous and current
 }

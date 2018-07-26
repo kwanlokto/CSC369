@@ -30,27 +30,23 @@ void init_datastructures() {
 	i_bitmap_size = (sb->s_inodes_count)/(sizeof(unsigned char) * 8);
 	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8);
 	printf("inode_bitmap: ");
-	for (int i = 0; i < i_bitmap_size; i++) {
-
-			/* Looping through each bit a byte. */
-			for (int k = 0; k < 8; k++) {
-					printf("%d", (inode_bitmap[i] >> k) & 1);
-			}
-			printf(" ");
-	}
+	print_bitmap(i_bitmap_size, inode_bitmap);
 	printf("\n");
 	printf("block_bitmap: ");
-	for (int i = 0; i < b_bitmap_size; i++) {
-
-			/* Looping through each bit a byte. */
-			for (int k = 0; k < 8; k++) {
-					printf("%d", (block_bitmap[i] >> k) & 1);
-			}
-			printf(" ");
-	}
+	print_bitmap(b_bitmap_size, block_bitmap);
 	printf("\n");
 }
 
+void print_bitmap(int bitmap_size, unsigned char * bitmap){
+	for (int i = 0; i < bitmap_size; i++) {
+
+			/* Looping through each bit a byte. */
+			for (int k = 0; k < 8; k++) {
+					printf("%d", (bitmap[i] >> k) & 1);
+			}
+			printf(" ");
+	}
+}
 
 /*
  * Open the image and initailize the disk
@@ -85,7 +81,7 @@ unsigned int path_walk(char * path) {
 			fprintf(stderr, "working on a file\n");
 			exit(1);
 		}
-		inode_no = check_directory(token, inode_no, &check_entry);
+		inode_no = check_directory(token, inode_no, 0, &check_entry);
 		printf("check %d\n", inode_no);
 		if (!inode_no) {
 			return 0;
@@ -96,69 +92,82 @@ unsigned int path_walk(char * path) {
 }
 
 
+
+
+
+
+//---------------------------------- MODIFIED
 /*
  * Checks to see whether or not the file with file name 'name' is in the
  * current working directory
  * Returns the inode_no number if found. Otherwise return 0
  */
-unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*fun_ptr)(unsigned int, char *)){
+int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int)){
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
 	unsigned int * inode_block = inode->i_block;
+	unsigned int * current_block = inode_block;
+	int curr_index = 0;
 	// Initialize all the variables needed
 	int index = 0;
-	unsigned int block_no = inode_block[index];
+	bool end_next_loop = false;
 
 	int i = 0;
 	int j = 0;
 	int k = 0;
-	if (block_no == 0) {
+	if (!inode_block[index]) {
 		fprintf(stderr, "something wrong with pathwalk, curr == 0\n");
 		exit(1);
 	}
 
-	while (block_no != 0) {
-		printf("Checking block no %d in inode no %d at index %d\n",block_no, inode_no, index);
-		unsigned int return_val;
-		if ((return_val = (*fun_ptr)(block_no, name)) > 0) {
+	while (index < 15) {
+		int return_val;
+		if ((return_val = (*fun_ptr)(current_block, curr_index, name, flag)) >= 0) {
 			return return_val;
 		}
-		// printf("%s\n", curr_block->name);
 
+		// // Check if current block number is 0
+		if (end_next_loop) {
+			return 0;
+		}
+
+
+		// Perform checks on the iblocks
 		if (index < 12) { //DIRECT
 			// Set the next variables
 			index++;
-			block_no = 0;
-
 			if (index == 12) {
 				printf("Now gonna check 12th entry -- singly indirects \n");
-				block_no = find_singly_indirect(inode_block[index], i);
-
+				current_block = find_singly_indirect(inode_block, index, &curr_index);
+				//curr_index = 0;
 			} else {
-				block_no = inode_block[index];
+				curr_index = index;
 			}
 		}
 
 		else if (index == 12) { //SINGLY INDIRECT
 			// Set the next variables
 			i++;
-			block_no = 0;
+
+
 			if (i == 257) { // If there are no more
 				index++;
 				i = 0;
 				printf("Now gonna check 13th entry -- doubly indirects \n");
-				block_no = find_doubly_indirect(inode_block[index], i, j);
+				curr_index = 0;
+				current_block = find_doubly_indirect(inode_block, index, i, &curr_index);
+
 			}
 
 			// If we still working on the same inode
 			if (index == 12) {
-				block_no = find_singly_indirect(inode_block[index], i);
+				curr_index = i;
+				current_block = find_singly_indirect(inode_block, index, &curr_index);
 			}
 		}
 
 
 		else if (index == 13) { //DOUBLY INDIRECT
 			i++;
-			block_no = 0;
 
 			if (i == 257) {
 				i = 0;
@@ -167,19 +176,20 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 					j = 0;
 					index++;
 					printf("Now gonna check 14th entry -- triply indirects \n");
-					block_no = find_triply_indirect(inode_block[index], i, j, k);
+					curr_index = 0;
+					current_block = find_triply_indirect(inode_block, index, i, j, &curr_index);
+
 				}
 			}
 			// If we are still working on the same inode
 			if (index == 13) {
-				block_no = find_doubly_indirect(inode_block[index], i, j);
+				curr_index = j;
+				current_block = find_doubly_indirect(inode_block, index, i, &curr_index);
 			}
 		}
 
 		else if (index == 14) { //TRIPLY INDIRECT
 			i++;
-			block_no = 0;
-
 			if (i == 257) {
 				i = 0;
 				j++;
@@ -188,13 +198,17 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 					k++;
 					if (k == 257) { //searched the entire thing but doesn't exist
 						index++;
-						block_no = 0;
 					}
 				}
 			}
 			if (index == 14) {
-				block_no = find_triply_indirect(inode_block[index], i, j, k);
+				curr_index = k;
+				current_block = find_triply_indirect(inode_block, index, i, j, &curr_index);
 			}
+		}
+
+		if (!current_block[curr_index]) {
+			end_next_loop = true;
 		}
 	}
 	return 0;
@@ -202,11 +216,15 @@ unsigned int check_directory(char * name, unsigned int inode_no, unsigned int (*
 
 
 
+
+
 /*
  * Looks for all the files in the block block_no. Print all files except for
  * the hidden files if flag is NULL. If flag is not NULL the print all files.
+ * Return -1 to indicate to the check_directory to keep printing all files
  */
-unsigned int print_file(unsigned int block_no, char * flag) {
+int print_file(unsigned int * block, int block_idx, char * null, int include_all) {
+	int block_no = block[block_idx];
 	if (block_no != 0) {
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
@@ -216,7 +234,7 @@ unsigned int print_file(unsigned int block_no, char * flag) {
 			char * name = i_entry -> name;
 
 			// Check to see if hidden files are allowed
-			if (flag != NULL || (strlen(name) > 0 && !(name[0] == '.'))) {
+			if (include_all || (strlen(name) > 0 && !(name[0] == '.'))) {
 				printf("%s\n", i_entry->name);
 			}
 			inode_no = i_entry->inode;
@@ -224,20 +242,23 @@ unsigned int print_file(unsigned int block_no, char * flag) {
 			i_entry = (void *)i_entry + i_entry->rec_len;
 		}
 	}
-	return 0;
+	return -1;
 
 }
 
 
 
 /*
- * Checks to see if if the block contains information about a file of the name
- * name, and returns that block number
- * Return 0 if not found and no errors
+ * If name is not NULL, checks to see if if the block contains information
+ * about a file of the name 'name', and returns that block number.
+ * Return -1 if not found and no errors
+ *
+ * If name is NULL, checks to see if the block contains a free spot
+ * and returns that block number. Return -1 if no free blocks.
  */
-unsigned int check_entry(unsigned int block_no, char * name){
+int check_entry(unsigned int * block, int block_idx, char * name, int checking_free){
+	int block_no = block[block_idx];
 	if (block_no != 0) {
-
 
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
@@ -245,55 +266,148 @@ unsigned int check_entry(unsigned int block_no, char * name){
 		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
 
-			printf("comparing two names: %s vs %s \n \n", i_entry->name, name);
-			if (strcmp(i_entry->name, name) == 0) {
-				return i_entry->inode;
+			if (!checking_free) {
+				printf("comparing two names: %s vs %s \n \n", i_entry->name, name);
+				if (strcmp(i_entry->name, name) == 0) {
+					return i_entry->inode;
+				}
 			}
 			inode_no = i_entry->inode;
-			count+= i_entry->rec_len;
-			i_entry = (void *)i_entry + i_entry->rec_len;
+			if (inode_no){
+				count+= i_entry->rec_len;
+				i_entry = (void *)i_entry + i_entry->rec_len;
+			}
 
 		}
+
+		if (checking_free && count < EXT2_BLOCK_SIZE) {
+			return count;
+		}
 	}
-	return 0;
+	return -1;
+}
+
+/*
+ * Add a new directory to the current block if there is space
+ * Returns -1 if it is not found
+ */
+int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
+	static unsigned int * prev_block = 0;
+	static unsigned int prev_idx = 0;
+
+	// Checks to see if the current block exists
+	if (!block[block_idx]) {
+
+		// Create the new inode for directory
+		int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+		if (new_inode_no == -ENOMEM) {
+			fprintf(stderr, "no space in inode bitmap\n");
+			exit(1);
+		}
+		take_spot(inode_bitmap, new_inode_no);
+		create_inode(new_inode_no, file_type);
+
+		// Check the entries and see if previous is full
+		int idx = check_entry(prev_block, prev_idx, NULL, true);
+
+		int block_no = prev_block[prev_idx];
+		if (idx < 0) {
+			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+			if (singly_block_no == -ENOMEM) {
+				fprintf(stderr, "no space in block bitmap\n");
+				exit(1);
+			}
+			take_spot(block_bitmap, singly_block_no);
+			block[block_idx] = singly_block_no;
+			block_no = singly_block_no;
+		}
+
+		// Create the new entry
+		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+		i_entry = (void *)i_entry + idx;
+		i_entry->inode = new_inode_no;
+		i_entry->name_len = strlen(name);
+		i_entry->file_type = file_type;
+		strncpy(i_entry->name, name, EXT2_NAME_LEN);
+
+	}
+	prev_block = block;
+	prev_idx = block_idx;
+	return -1;
+}
+
+
+
+/*
+ * Creates a new inode at the inodenumber 'free_inode'
+ */
+void create_inode(int free_inode, int file_type){
+	struct ext2_inode * new_inode = inode_table + (free_inode - 1);
+
+	if (file_type == EXT2_FT_REG_FILE) {
+		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFREG;
+	} else if (file_type == EXT2_FT_DIR) {
+		// How to set it to a directory ????
+		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFDIR;
+	} else if (file_type == EXT2_FT_SYMLINK) {
+		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFLNK;
+	}
+
+	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
+	// Set the creation time
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+	printf ( "Current local time and date: %s", asctime (timeinfo) );
+	new_inode->i_ctime = (unsigned int) timeinfo;
+
+	//Initialize the i_block to be all 0
+	for (int i = 0; i < 15; i++) {
+		(new_inode -> i_block)[i] = 0;
+	}
+
+	//need to create a pointer to previous and current
+}
+
+/*
+* Returns the current_block using the singly indirect table
+* if it is found. Otherwise return the block that is empty
+ */
+unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index){
+	if (block[block_no]) {
+		unsigned int * singly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return singly_indirect;
+	}
+	*index = block_no;
+	return block;
 }
 
 
 /*
- * Returns the inode_no of the pointed inode block from the singly indirect table
- * if it is found. Otherwise return 0
+ * Returns the current_block using the doubly indirect table
+ * if it is found. Otherwise return the block that is empty
  */
-unsigned int find_singly_indirect(int block_no, int i){
-	if (block_no != 0) {
-		unsigned int * singly_indirect = (unsigned int *)(disk + block_no * block_size);
-		return singly_indirect[i];
+unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index) {
+	if (block[block_no]) {
+		unsigned int * doubly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return find_singly_indirect(doubly_indirect, i, index);
 	}
-	return 0;
-}
-
-
-/*
- * Returns the inode_no of the pointed inode block from the doubly indirect table
- * if it is found. Otherwise return 0
- */
-unsigned int find_doubly_indirect(int block_no, int i, int j) {
-	if (block_no != 0) {
-		unsigned int * doubly_indirect = (unsigned int *)(disk + block_no * block_size);
-		return find_singly_indirect(doubly_indirect[i], j);
-	}
-	return 0;
+	*index = block_no;
+	return block;
 }
 
 /*
- * Returns the inode_no of the pointed inode block from the triply indirect table
- * if it is found. Otherwise return 0
+* Returns the current_block using the triply indirect table
+* if it is found. Otherwise return the block that is empty
  */
-unsigned int find_triply_indirect(int block_no, int i, int j, int k) {
-	if (block_no != 0) {
-		unsigned int * triply_indirect = (unsigned int *)(disk + block_no * block_size);
-		return find_doubly_indirect(triply_indirect[i], j, k);
+unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index) {
+	if (block[block_no]) {
+		unsigned int * triply_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return find_doubly_indirect(triply_indirect, i, j, index);
 	}
-	return 0;
+	*index = block_no;
+	return block;
 }
 
 
@@ -353,146 +467,4 @@ void take_spot(unsigned char * bitmap, int index) {
 		exit(1);
 	}
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
-}
-
-
-/*
- * Searches all i_block in the struct ext2_inode and looks for a free entry
- * and inserts the new inode_no into that entry.
- * Returns 0 if successful and returns -ENOMEM if unsucessful.
- */
-int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no) {
-	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
-
-	int index = 0;
-	int i = 0;
-	int j = 0;
-	int k = 0;
-	unsigned int * inode_block = dir_inode->i_block;
-
-	while (index < 15) {
-		if (index < 12) { // DIRECT
-			if (!inode_block[index]) {
-				inode_block[index] = inode_no;
-				return 0;
-			}
-			index++;
-		}
-
-		else if (index == 12) { //SINGLY INDIRECT
-			if (!inode_block[index]) { //no singly indirect table
-				int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (singly_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, singly_block_no);
-				inode_block[index] = singly_block_no;
-				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-				// singly_indirect[i] = inode_no;
-				// return 0;
-			}
-			if (!find_singly_indirect(inode_block[index], i)) { //entry i is free
-				unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-				singly_indirect[i] = inode_no;
-				return 0;
-			}
-			i++;
-			if (i == 257) {
-				index++;
-				i = 0;
-			}
-		}
-
-
-		else if (index == 13) { //DOUBLY INDIRECT
-			if (!inode_block[index]) { //no doubly indirect table
-				int doubly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (doubly_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, doubly_block_no);
-				inode_block[index] = doubly_block_no;
-				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-				// singly_indirect[i] = inode_no;
-				// return 0;
-			}
-			unsigned int * doubly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-			if (!doubly_indirect[i]) {
-				int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (singly_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, singly_block_no);
-				doubly_indirect[i] = singly_block_no;
-			}
-			if (!find_singly_indirect(doubly_indirect[i], j)){
-				unsigned int * singly_indirect = (unsigned int *)(disk + doubly_indirect[i] * block_size);
-				singly_indirect[j] = inode_no;
-				return 0;
-			}
-
-			i++;
-			if (i == 257) {
-				j++;
-				i = 0;
-				if (j == 257) {
-					index++;
-					j = 0;
-				}
-			}
-		}
-
-
-		else if (index == 14) { //TRIPLY INDIRECT
-			if (!inode_block[index]) { //no triply indirect table
-				unsigned int triply_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (triply_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, triply_block_no);
-				inode_block[index] = triply_block_no;
-				// unsigned int * singly_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-				// singly_indirect[i] = inode_no;
-				// return 0;
-			}
-			unsigned int * triply_indirect = (unsigned int *)(disk + inode_block[index] * block_size);
-			if (!triply_indirect[i]) {
-				unsigned int doubly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (doubly_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, doubly_block_no);
-				triply_indirect[i] = doubly_block_no;
-			}
-			unsigned int * doubly_indirect = (unsigned int *)(disk + triply_indirect[i] * block_size);
-			if (!doubly_indirect[j]){
-				unsigned int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-				if (singly_block_no == -ENOMEM) {
-					return -ENOMEM;
-				}
-				take_spot(block_bitmap, singly_block_no);
-				doubly_indirect[i] = singly_block_no;
-			}
-			if (!find_singly_indirect(doubly_indirect[j], k)){
-				unsigned int * singly_indirect = (unsigned int *)(disk + doubly_indirect[j] * block_size);
-				singly_indirect[j] = inode_no;
-				return 0;
-			}
-
-			i++;
-			if (i == 257){
-				j++;
-				i = 0;
-				if (j == 257) {
-					k++;
-					j = 0;
-					if (k == 257) {
-						k = 0;
-						index++;
-					}
-				}
-			}
-		}
-	}
-	return -ENOMEM;
 }
