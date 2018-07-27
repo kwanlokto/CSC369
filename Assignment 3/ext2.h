@@ -270,7 +270,8 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 int check_entry(unsigned int * block, int block_idx, char * name, int checking_free);
 int print_file(unsigned int * block, int block_idx, char * name, int include_all);
 int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
-void create_inode(int free_inode, int file_type);
+void create_inode(int new_inode_no);
+void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type);
 
 unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index);
 unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index);
@@ -282,3 +283,4 @@ int search_bitmap(unsigned char * bitmap, int max);
 void split_path(char * path, char * name, char * dir);
 void take_spot(unsigned char * bitmap, int index);
 int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no);
+void str_cat(char * cat_to, char * cat_from, int * index);

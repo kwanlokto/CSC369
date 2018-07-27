@@ -75,14 +75,12 @@ unsigned int path_walk(char * path) {
 	struct ext2_inode * curr;
 
   while (token != NULL) {
-		printf("enetere");
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR)) {
 			fprintf(stderr, "working on a file\n");
 			exit(1);
 		}
 		inode_no = check_directory(token, inode_no, 0, &check_entry);
-		printf("check %d\n", inode_no);
 		if (!inode_no) {
 			return 0;
 		}
@@ -125,11 +123,10 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			return return_val;
 		}
 
-		// // Check if current block number is 0
+		// Terminating condition
 		if (end_next_loop) {
 			return 0;
 		}
-
 
 		// Perform checks on the iblocks
 		if (index < 12) { //DIRECT
@@ -147,15 +144,12 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 		else if (index == 12) { //SINGLY INDIRECT
 			// Set the next variables
 			i++;
-
-
 			if (i == 257) { // If there are no more
 				index++;
 				i = 0;
 				printf("Now gonna check 13th entry -- doubly indirects \n");
 				curr_index = 0;
 				current_block = find_doubly_indirect(inode_block, index, i, &curr_index);
-
 			}
 
 			// If we still working on the same inode
@@ -168,7 +162,6 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 
 		else if (index == 13) { //DOUBLY INDIRECT
 			i++;
-
 			if (i == 257) {
 				i = 0;
 				j++;
@@ -178,9 +171,9 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 					printf("Now gonna check 14th entry -- triply indirects \n");
 					curr_index = 0;
 					current_block = find_triply_indirect(inode_block, index, i, j, &curr_index);
-
 				}
 			}
+
 			// If we are still working on the same inode
 			if (index == 13) {
 				curr_index = j;
@@ -207,6 +200,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			}
 		}
 
+		// Checks if current block is valid
 		if (!current_block[curr_index]) {
 			end_next_loop = true;
 		}
@@ -267,7 +261,6 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
 
 			if (!checking_free) {
-				printf("comparing two names: %s vs %s \n \n", i_entry->name, name);
 				if (strcmp(i_entry->name, name) == 0) {
 					return i_entry->inode;
 				}
@@ -288,8 +281,9 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 }
 
 /*
- * Add a new directory to the current block if there is space
- * Returns -1 if it is not found
+ * Add a new file to the current block if there is space and returns the
+ * new file's inode
+ * Returns -1 if no space is found
  */
 int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 	static unsigned int * prev_block = 0;
@@ -305,13 +299,12 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 			exit(1);
 		}
 		take_spot(inode_bitmap, new_inode_no);
-		create_inode(new_inode_no, file_type);
-
+		create_inode(new_inode_no);
 		// Check the entries and see if previous is full
 		int idx = check_entry(prev_block, prev_idx, NULL, true);
 
 		int block_no = prev_block[prev_idx];
-		if (idx < 0) {
+		if (idx < 0) { //If there is no space in the previous block
 			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 			if (singly_block_no == -ENOMEM) {
 				fprintf(stderr, "no space in block bitmap\n");
@@ -320,55 +313,44 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 			take_spot(block_bitmap, singly_block_no);
 			block[block_idx] = singly_block_no;
 			block_no = singly_block_no;
+			idx = 0;
 		}
 
 		// Create the new entry
-		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-		i_entry = (void *)i_entry + idx;
-		i_entry->inode = new_inode_no;
-		i_entry->name_len = strlen(name);
-		i_entry->file_type = file_type;
-		strncpy(i_entry->name, name, EXT2_NAME_LEN);
-
+		create_new_entry(block_no, new_inode_no, idx, name, file_type);
+		return new_inode_no;
 	}
 	prev_block = block;
 	prev_idx = block_idx;
 	return -1;
 }
 
-
+void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
+	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size + displacement);
+	i_entry = (void *)i_entry + displacement;
+	i_entry->inode = inode_no;
+	i_entry->name_len = strlen(name);
+	i_entry->file_type = file_type;
+	i_entry->rec_len = sizeof(struct ext2_dir_entry_2); //is this correct????
+	strncpy(i_entry->name, name, EXT2_NAME_LEN);
+}
 
 /*
- * Creates a new inode at the inodenumber 'free_inode'
+ * Creates a new inode at the inodenumber 'new_inode'
+ * info can be:
+ *						parent_inode
+ *						data in a reg file
  */
-void create_inode(int free_inode, int file_type){
-	struct ext2_inode * new_inode = inode_table + (free_inode - 1);
+void create_inode(int new_inode_no){
 
-	if (file_type == EXT2_FT_REG_FILE) {
-		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFREG;
-	} else if (file_type == EXT2_FT_DIR) {
-		// How to set it to a directory ????
-		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFDIR;
-	} else if (file_type == EXT2_FT_SYMLINK) {
-		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFLNK;
+	// Reset all values to be the default
+	struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
+	for (int i = 0; i < 15; i++) {
+		free_spot(block_bitmap, (new_inode -> i_block)[i]);
+		(new_inode -> i_block)[i] = 0;
 	}
 	new_inode->i_dtime = 0; // remove deletion time
 	new_inode->i_links_count = 1;
-	// https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
-	// Set the creation time
-	// time_t rawtime;
-	// struct tm * timeinfo;
-	// time ( &rawtime );
-	// timeinfo = localtime ( &rawtime );
-	// printf ( "Current local time and date: %s", asctime (timeinfo) );
-	// new_inode->i_ctime = (unsigned int) timeinfo;
-
-	//Initialize the i_block to be all 0
-	for (int i = 0; i < 15; i++) {
-		(new_inode -> i_block)[i] = 0;
-	}
-
-	//need to create a pointer to previous and current
 }
 
 /*
@@ -417,23 +399,50 @@ unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, 
  */
 void split_path(char * path, char * name, char * dir) {
 	int count = 0;
-	while (path[count] != '\0') {
+	int name_idx = 0;
+	int dir_idx = 0;
+	while (count < strlen(path)) {
+		//printf("count %d\n", count);
 		char file[EXT2_NAME_LEN];
-		while (path[count] != '\0' && path[count] != '/' ) {
-			strcat(file, &path[count]);
+		int file_idx = 0;
+		while (count < strlen(path) && path[count] != '/' ) {
+			file[file_idx] = path[count];
+			file_idx++;
+			count++;
+		}
+		file[file_idx] = '\0';
+		printf("count: %d file: %s\n",count, file);
+		// indicating the last file in the path
+
+		if (path[count] != '/') {
+			str_cat(name, file, &name_idx);
+		} else {
+			str_cat(dir, file, &dir_idx);
+			(dir)[dir_idx] = '/';
+			(dir)[dir_idx + 1] = '\0';
+			dir_idx ++;
+			printf("dir: %s\n", dir);
 			count++;
 		}
 
-		// indicating the last file in the path
-		if (path[count] != '/') {
-			strcat(name, file);
-		} else {
-			strcat(dir, file);
-			strcat(dir, "/");
-		}
+		//printf("count %d\n", count);
+		//count++;
+	}
+	//fprintf(stderr,"%s, %s", *dir, *name);
+}
 
+/*
+ * Append the substring 'substring' to str
+ */
+void str_cat(char * str, char * substring, int * index) {
+	int count = 0;
+	while (count < strlen(substring)) {
+		(str)[*index] = substring[count];
+		(*index)++;
 		count++;
 	}
+	(str)[*index] = '\0';
+	printf("file: %s\n",str);
 }
 
 /*
@@ -468,4 +477,14 @@ void take_spot(unsigned char * bitmap, int index) {
 		exit(1);
 	}
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
+}
+
+void free_spot(unsigned char * bitmap, int index) {
+	int bit_map_byte = index / 8;
+	int bit_order = index % 8;
+	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
+		fprintf(stderr, "trying to write to a taken spot\n");
+		exit(1);
+	}
+	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
 }
