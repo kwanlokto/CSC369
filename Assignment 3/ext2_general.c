@@ -257,11 +257,11 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
 
-		int count = 0;
+		int count = i_entry->rec_len - 1;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
 
-			if (!checking_free) {
-				if (strcmp(i_entry->name, name) == 0) {
+			if (!checking_free) { //If we are not looking for a free spot
+				if (!strcmp(i_entry->name, name)) {
 					return i_entry->inode;
 				}
 			}
@@ -325,13 +325,18 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 	return -1;
 }
 
+/*
+ * Create a new file at the block number 'block_no' with displacement bytes
+ * where this entry corresponds to the inode with inode number 'inode_no'.
+ * The name of the file is 'name' of file type 'file_type'
+ */
 void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size + displacement);
 	i_entry = (void *)i_entry + displacement;
 	i_entry->inode = inode_no;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
-	i_entry->rec_len = sizeof(struct ext2_dir_entry_2); //is this correct????
+	i_entry->rec_len = sizeof(struct ext2_dir_entry_2) + 1; //is this correct????
 	strncpy(i_entry->name, name, EXT2_NAME_LEN);
 }
 
@@ -482,9 +487,5 @@ void take_spot(unsigned char * bitmap, int index) {
 void free_spot(unsigned char * bitmap, int index) {
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
-	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
-		fprintf(stderr, "trying to write to a taken spot\n");
-		exit(1);
-	}
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
 }

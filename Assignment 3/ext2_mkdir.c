@@ -3,7 +3,6 @@
 
 int create_file(char * path, int file_type);
 void init_dir(int dir_inode_no, int parent_inode_no);
-void create_inode(int new_inode_no, int file_type, void * info);
 
 int main(int argc, char ** argv) {
 	if (argc != 3) {
@@ -43,9 +42,9 @@ int create_file(char * path, int file_type) {
 	}
 
 	// Checks to see if the file already exists
-	unsigned int inode_no = check_directory(file, dir_inode_no, 1, &check_entry);
-	if (inode_no) {
-		struct ext2_inode * dir_inode = inode_table + (inode_no - 1);
+	unsigned int dir_inode = check_directory(file, dir_inode_no, 1, &check_entry);
+	if (dir_inode) {
+		struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 		if (dir_inode->i_mode & EXT2_S_IFDIR) {
 			fprintf(stderr, "directory already exists\n");
 			return -EEXIST;
@@ -53,13 +52,13 @@ int create_file(char * path, int file_type) {
 	}
 
 	// add the inode to the dir_inode i_block
-	unsigned int new_inode_no = check_directory(file, dir_inode_no, file_type, &add_entry);
-	if (!new_inode_no) {
+	unsigned int file_inode_no = check_directory(file, dir_inode_no, file_type, &add_entry);
+	if (!file_inode_no) {
 		fprintf(stderr, "unable to add the file\n");
 		return -ENOENT;
 	}
 
-	create_inode(new_inode_no, EXT2_FT_DIR, &dir_inode_no);
+	init_dir(file_inode_no, dir_inode_no);
 	// initialize the directory inode
 	return 0;
 }
@@ -91,6 +90,6 @@ void init_dir(int dir_inode_no, int parent_inode_no) {
 	create_new_entry(block_no, dir_inode_no, 0, ".", EXT2_FT_DIR);
 
 	// Initializing the file '..'
-	create_new_entry(block_no, parent_inode_no, sizeof(struct ext2_dir_entry_2), "..", EXT2_FT_DIR);
+	create_new_entry(block_no, parent_inode_no, sizeof(struct ext2_dir_entry_2) + 1, "..", EXT2_FT_DIR);
 
 }

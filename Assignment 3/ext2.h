@@ -282,5 +282,6 @@ void print_bitmap(int bitmap_size, unsigned char * bitmap);
 int search_bitmap(unsigned char * bitmap, int max);
 void split_path(char * path, char * name, char * dir);
 void take_spot(unsigned char * bitmap, int index);
+void free_spot(unsigned char * bitmap, int index);
 int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no);
 void str_cat(char * cat_to, char * cat_from, int * index);
