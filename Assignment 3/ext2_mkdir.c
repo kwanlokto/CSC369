@@ -33,7 +33,7 @@ int create_file(char * path, int file_type) {
 	char dir[strlen(path)];
 	printf("split\n");
 	split_path(path, file, dir);
-	printf("path: %s, file: %s, dir: %s", path, file, dir);
+	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	unsigned int dir_inode_no;
 	if (!(dir_inode_no = path_walk(dir))) {
@@ -42,7 +42,7 @@ int create_file(char * path, int file_type) {
 	}
 
 	// Checks to see if the file already exists
-	unsigned int dir_inode = check_directory(file, dir_inode_no, 1, &check_entry);
+	unsigned int dir_inode = check_directory(file, dir_inode_no, 0, &check_entry);
 	if (dir_inode) {
 		struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 		if (dir_inode->i_mode & EXT2_S_IFDIR) {
@@ -86,10 +86,12 @@ void init_dir(int dir_inode_no, int parent_inode_no) {
 	take_spot(block_bitmap, block_no);
 	(dir_inode->i_block)[0] = block_no;
 
-	// Initializign the file '.'
+	unsigned int * block = disk + block_no * block_size;
+	// Initializing the file '.'
 	create_new_entry(block_no, dir_inode_no, 0, ".", EXT2_FT_DIR);
-
+	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+	i_entry->rec_len = 12;
 	// Initializing the file '..'
-	create_new_entry(block_no, parent_inode_no, sizeof(struct ext2_dir_entry_2) + 1, "..", EXT2_FT_DIR);
+	create_new_entry(block_no, parent_inode_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
 
 }

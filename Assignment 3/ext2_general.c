@@ -223,8 +223,10 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
 
-		int count = 0;
+		int count = i_entry->rec_len;
+		//printf("size of dir_entry %d\n", sizeof(struct ext2_dir_entry_2));
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
+			//printf("count: %d\n", count);
 			char * name = i_entry -> name;
 
 			// Check to see if hidden files are allowed
@@ -256,10 +258,11 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
-
-		int count = i_entry->rec_len - 1;
+		printf("check\n");
+		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
-
+			printf("compare: rec_len %d to sizeof %lu\n", i_entry->rec_len, sizeof(struct ext2_dir_entry_2));
+			printf("name: %s\n\n", i_entry->name);
 			if (!checking_free) { //If we are not looking for a free spot
 				if (!strcmp(i_entry->name, name)) {
 					return i_entry->inode;
@@ -274,7 +277,13 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 		}
 
 		if (checking_free && count < EXT2_BLOCK_SIZE) {
-			return count;
+			int current_idx = count - i_entry->inode;
+			int current_size = sizeof(struct ext2_dir_entry_2) + i_entry->name_len;
+			int adding_size = sizeof(struct ext2_dir_entry_2) + strlen(name);
+			if (current_idx + current_size + adding_size < EXT2_BLOCK_SIZE) {
+				i_entry->rec_len = current_size;
+				return current_idx + current_size;
+			}
 		}
 	}
 	return -1;
@@ -300,8 +309,8 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 		}
 		take_spot(inode_bitmap, new_inode_no);
 		create_inode(new_inode_no);
-		// Check the entries and see if previous is full
-		int idx = check_entry(prev_block, prev_idx, NULL, true);
+		// Check the entries and see if we can add name to previous
+		int idx = check_entry(prev_block, prev_idx, name, 1);
 
 		int block_no = prev_block[prev_idx];
 		if (idx < 0) { //If there is no space in the previous block
@@ -331,20 +340,20 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
  * The name of the file is 'name' of file type 'file_type'
  */
 void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
-	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size + displacement);
+	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	i_entry = (void *)i_entry + displacement;
 	i_entry->inode = inode_no;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
-	i_entry->rec_len = sizeof(struct ext2_dir_entry_2) + 1; //is this correct????
+	// if (size < 12) {
+	// 	size = 12;
+	// }
+	i_entry->rec_len = block_size - displacement; //is this correct????
 	strncpy(i_entry->name, name, EXT2_NAME_LEN);
 }
 
 /*
  * Creates a new inode at the inodenumber 'new_inode'
- * info can be:
- *						parent_inode
- *						data in a reg file
  */
 void create_inode(int new_inode_no){
 
@@ -416,7 +425,6 @@ void split_path(char * path, char * name, char * dir) {
 			count++;
 		}
 		file[file_idx] = '\0';
-		printf("count: %d file: %s\n",count, file);
 		// indicating the last file in the path
 
 		if (path[count] != '/') {
@@ -426,14 +434,11 @@ void split_path(char * path, char * name, char * dir) {
 			(dir)[dir_idx] = '/';
 			(dir)[dir_idx + 1] = '\0';
 			dir_idx ++;
-			printf("dir: %s\n", dir);
 			count++;
 		}
 
-		//printf("count %d\n", count);
-		//count++;
 	}
-	//fprintf(stderr,"%s, %s", *dir, *name);
+
 }
 
 /*
