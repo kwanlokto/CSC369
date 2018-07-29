@@ -258,30 +258,34 @@ int b_bitmap_size;
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
 void open_image(char * virtual_disk);
-unsigned int path_walk(char * path);
-// unsigned int check_directory(char * name, unsigned int block_no, unsigned int (*fun_ptr)(unsigned int, char *));
-// unsigned int check_entry(unsigned int block_no, char * name);
-// unsigned int print_file(unsigned int block_no, char * name);
-// unsigned int find_singly_indirect(int block_no, int i);
-// unsigned int find_doubly_indirect(int block_no, int i, int j);
-// unsigned int find_triply_indirect(int block_no, int i, int j, int k);
 
+unsigned int path_walk(char * path);
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
+
+// Ext2_Dir_Entry operations
 int check_entry(unsigned int * block, int block_idx, char * name, int checking_free);
 int print_file(unsigned int * block, int block_idx, char * name, int include_all);
 int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
+
 void create_inode(int new_inode_no);
 void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type);
+int create_file(char * path, int file_type);
 
+// Traversing i_block functions
 unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index);
 unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index);
 unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index);
 
-
+// Bitmap functions
 void print_bitmap(int bitmap_size, unsigned char * bitmap);
 int search_bitmap(unsigned char * bitmap, int max);
-void split_path(char * path, char * name, char * dir);
 void take_spot(unsigned char * bitmap, int index);
 void free_spot(unsigned char * bitmap, int index);
-int assign_iblock(unsigned int dir_inode_no, unsigned int inode_no);
+
+// String manipulation functions
 void str_cat(char * cat_to, char * cat_from, int * index);
+void split_path(char * path, char * name, char * dir);
+
+// Initializing functions
+void init_dir(int dir_inode_no, int parent_inode_no);
+void init_link(int link_inode_no, int file_inode_no);

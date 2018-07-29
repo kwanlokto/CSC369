@@ -1,8 +1,5 @@
 #include "ext2.h"
 
-/*
- * All extern variables
- */
 extern unsigned char * disk;
 extern unsigned int block_size;
 extern struct ext2_inode * inode_table;
@@ -12,6 +9,8 @@ extern unsigned char * inode_bitmap;
 extern unsigned char * block_bitmap;
 extern int i_bitmap_size;
 extern int b_bitmap_size;
+
+// ---------------------------- Setting up Functions -------------------------//
 /*
  * Initializes all global variables
  */
@@ -37,17 +36,6 @@ void init_datastructures() {
 	printf("\n");
 }
 
-void print_bitmap(int bitmap_size, unsigned char * bitmap){
-	for (int i = 0; i < bitmap_size; i++) {
-
-			/* Looping through each bit a byte. */
-			for (int k = 0; k < 8; k++) {
-					printf("%d", (bitmap[i] >> k) & 1);
-			}
-			printf(" ");
-	}
-}
-
 /*
  * Open the image and initailize the disk
  */
@@ -62,6 +50,9 @@ void open_image(char * virtual_disk) {
 }
 
 
+
+
+// --------------------------- Traversing a Path -----------------------------//
 /*
  * Returns the inode number of file that is at the end of the path.
  * If the file is not found then return 0
@@ -89,12 +80,6 @@ unsigned int path_walk(char * path) {
 	return inode_no;
 }
 
-
-
-
-
-
-//---------------------------------- MODIFIED
 /*
  * Checks to see whether or not the file with file name 'name' is in the
  * current working directory
@@ -208,10 +193,49 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 	return 0;
 }
 
+/*
+* Returns the current_block using the singly indirect table
+* if it is found. Otherwise return the block that is empty
+ */
+unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index){
+	if (block[block_no]) {
+		unsigned int * singly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return singly_indirect;
+	}
+	*index = block_no;
+	return block;
+}
+
+/*
+ * Returns the current_block using the doubly indirect table
+ * if it is found. Otherwise return the block that is empty
+ */
+unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index) {
+	if (block[block_no]) {
+		unsigned int * doubly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return find_singly_indirect(doubly_indirect, i, index);
+	}
+	*index = block_no;
+	return block;
+}
+
+/*
+* Returns the current_block using the triply indirect table
+* if it is found. Otherwise return the block that is empty
+ */
+unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index) {
+	if (block[block_no]) {
+		unsigned int * triply_indirect = (unsigned int *)(disk + block[block_no] * block_size);
+		return find_doubly_indirect(triply_indirect, i, j, index);
+	}
+	*index = block_no;
+	return block;
+}
 
 
 
 
+// ---------------------- Operations on EXT2_DIR_ENTRIES ---------------------//
 /*
  * Looks for all the files in the block block_no. Print all files except for
  * the hidden files if flag is NULL. If flag is not NULL the print all files.
@@ -223,10 +247,8 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
 
-		int count = i_entry->rec_len;
-		//printf("size of dir_entry %d\n", sizeof(struct ext2_dir_entry_2));
+		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
-			//printf("count: %d\n", count);
 			char * name = i_entry -> name;
 
 			// Check to see if hidden files are allowed
@@ -242,14 +264,12 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 
 }
 
-
-
 /*
- * If name is not NULL, checks to see if if the block contains information
+ * If checking_free == 0, checks to see if if the block contains information
  * about a file of the name 'name', and returns that block number.
  * Return -1 if not found and no errors
  *
- * If name is NULL, checks to see if the block contains a free spot
+ * If checking_free == 1, checks to see if the block contains a free spot
  * and returns that block number. Return -1 if no free blocks.
  */
 int check_entry(unsigned int * block, int block_idx, char * name, int checking_free){
@@ -258,11 +278,8 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 		int inode_no = i_entry->inode;
-		printf("check\n");
 		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
-			printf("compare: rec_len %d to sizeof %lu\n", i_entry->rec_len, sizeof(struct ext2_dir_entry_2));
-			printf("name: %s\n\n", i_entry->name);
 			if (!checking_free) { //If we are not looking for a free spot
 				if (!strcmp(i_entry->name, name)) {
 					return i_entry->inode;
@@ -334,6 +351,48 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 	return -1;
 }
 
+
+
+
+//---------------------- Operations to create a new file ---------------------//
+/*
+ * Create a new file at the path 'path' with a file type 'file_type'
+ */
+int create_file(char * path, int file_type) {
+	char file[EXT2_NAME_LEN];
+	char dir[strlen(path)];
+	split_path(path, file, dir);
+	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
+
+	unsigned int dir_inode_no;
+	if (!(dir_inode_no = path_walk(dir))) {
+		fprintf(stderr, "Not a valid path\n");
+		return -ENOENT;
+	}
+
+	// Checks to see if the file already exists
+	unsigned int dir_inode = check_directory(file, dir_inode_no, 0, &check_entry);
+	if (dir_inode) {
+
+			fprintf(stderr, "File with the same name exists\n");
+			return -EEXIST;
+	}
+
+	// add the inode to the dir_inode i_block
+	unsigned int file_inode_no = check_directory(file, dir_inode_no, file_type, &add_entry);
+	if (!file_inode_no) {
+		fprintf(stderr, "Unable to create file\n");
+		return -ENOENT;
+	}
+
+	if (file_type == EXT2_FT_DIR){
+		printf("directory\n");
+		init_dir(file_inode_no, dir_inode_no);
+	}
+	// initialize the directory inode
+	return 0;
+}
+
 /*
  * Create a new file at the block number 'block_no' with displacement bytes
  * where this entry corresponds to the inode with inode number 'inode_no'.
@@ -367,47 +426,10 @@ void create_inode(int new_inode_no){
 	new_inode->i_links_count = 1;
 }
 
-/*
-* Returns the current_block using the singly indirect table
-* if it is found. Otherwise return the block that is empty
- */
-unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index){
-	if (block[block_no]) {
-		unsigned int * singly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
-		return singly_indirect;
-	}
-	*index = block_no;
-	return block;
-}
 
 
-/*
- * Returns the current_block using the doubly indirect table
- * if it is found. Otherwise return the block that is empty
- */
-unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index) {
-	if (block[block_no]) {
-		unsigned int * doubly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
-		return find_singly_indirect(doubly_indirect, i, index);
-	}
-	*index = block_no;
-	return block;
-}
 
-/*
-* Returns the current_block using the triply indirect table
-* if it is found. Otherwise return the block that is empty
- */
-unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index) {
-	if (block[block_no]) {
-		unsigned int * triply_indirect = (unsigned int *)(disk + block[block_no] * block_size);
-		return find_doubly_indirect(triply_indirect, i, j, index);
-	}
-	*index = block_no;
-	return block;
-}
-
-
+//------------------ Operations to manipulate the path string ----------------//
 /*
  * Extracts the filename and dir from the path
  */
@@ -416,7 +438,6 @@ void split_path(char * path, char * name, char * dir) {
 	int name_idx = 0;
 	int dir_idx = 0;
 	while (count < strlen(path)) {
-		//printf("count %d\n", count);
 		char file[EXT2_NAME_LEN];
 		int file_idx = 0;
 		while (count < strlen(path) && path[count] != '/' ) {
@@ -452,9 +473,12 @@ void str_cat(char * str, char * substring, int * index) {
 		count++;
 	}
 	(str)[*index] = '\0';
-	printf("file: %s\n",str);
 }
 
+
+
+
+//---------------------------- Bitmap Operations -----------------------------//
 /*
  * Searches the entire bitmap and returns the index of the bitmap with a free
  * spot. If no free spot is found return -ENOMEM
@@ -467,14 +491,12 @@ int search_bitmap(unsigned char * bitmap, int max) {
 				int bit = (bitmap[i] >> k) & 1;
 				if (!bit) {
 					int index = i * 8 + k;
-					printf("index: %d\n", index);
 					return index;
 				}
 			}
 	}
 	return -ENOMEM;
 }
-
 
 /*
  * Update the bitmap, and set the bit at index 'index' to 1
@@ -489,8 +511,61 @@ void take_spot(unsigned char * bitmap, int index) {
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
 }
 
+/*
+ * Updates the bitmap and sets the bit ad index 'index' to 0
+ */
 void free_spot(unsigned char * bitmap, int index) {
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
+}
+
+/*
+ * Prints out the bitmap
+ */
+void print_bitmap(int bitmap_size, unsigned char * bitmap){
+	for (int i = 0; i < bitmap_size; i++) {
+
+			/* Looping through each bit a byte. */
+			for (int k = 0; k < 8; k++) {
+					printf("%d", (bitmap[i] >> k) & 1);
+			}
+			printf(" ");
+	}
+}
+
+
+
+
+//--------------------------- Initializing Files -----------------------------//
+void init_dir(int dir_inode_no, int parent_inode_no) {
+	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
+	dir_inode->i_mode = dir_inode->i_mode | EXT2_S_IFDIR;
+	int block_no = search_bitmap(block_bitmap, b_bitmap_size);
+	if (block_no == -ENOMEM) {
+		fprintf(stderr, "no space in block bitmap\n");
+		exit(1);
+	}
+	take_spot(block_bitmap, block_no);
+	(dir_inode->i_block)[0] = block_no;
+
+	// Initializing the file '.'
+	create_new_entry(block_no, dir_inode_no, 0, ".", EXT2_FT_DIR);
+	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+	i_entry->rec_len = 12;
+	// Initializing the file '..'
+	create_new_entry(block_no, parent_inode_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
+
+}
+
+
+void init_link(int link_inode_no, int file_inode_no) {
+	struct ext2_inode * link_inode = inode_table + (link_inode_no - 1);
+	link_inode->i_mode = link_inode->i_mode | EXT2_S_IFLNK;
+}
+
+
+void init_reg(int reg_inode_no){
+	struct ext2_inode * reg_inode = inode_table + (reg_inode_no - 1);
+	reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 }
