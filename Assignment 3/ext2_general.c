@@ -1,22 +1,36 @@
 #include "ext2.h"
 
-extern unsigned char * disk;
-extern unsigned int block_size;
-extern struct ext2_inode * inode_table;
-extern struct ext2_super_block * sb;
-extern struct ext2_group_desc * descriptor;
-extern unsigned char * inode_bitmap;
-extern unsigned char * block_bitmap;
-extern int i_bitmap_size;
-extern int b_bitmap_size;
+//------------------------ Constants -------------------------//
+#define FS_SIZE (128*1024)
 
-// ---------------------------- Setting up Functions -------------------------//
+//------------------------ GLOBAL VARIABLES -------------------------//
+unsigned char * disk;
+unsigned int block_size;
+struct ext2_inode * inode_table;
+struct ext2_super_block * sb;
+struct ext2_group_desc * descriptor;
+struct ext2_dir_entry_2* root_directory;
+unsigned char * inode_bitmap;
+unsigned char * block_bitmap;
+int i_bitmap_size;
+int b_bitmap_size;
+
+//WIN32 was used to develop and test in Windows until Linux was available.
+
+#ifdef WIN32
+FILE* fimg;
+#endif
+
+//------------------------ Functions -------------------------//
+
+
 /*
- * Initializes all global variables
- */
+ * Initializes FS global variables
+ * Referenced from https://wiki.osdev.org/Ext2
+ * and http://www.nongnu.org/ext2-doc/ext2.html#S-LOG-BLOCK-SIZE
+*/
 void init_datastructures() {
-	// Referenced from https://wiki.osdev.org/Ext2
-	// and http://www.nongnu.org/ext2-doc/ext2.html#S-LOG-BLOCK-SIZE
+	TRACE("%s\n", __func__);
 	sb = (struct ext2_super_block *)(disk + EXT2_BLOCK_SIZE);
 	block_size = EXT2_BLOCK_SIZE << (sb -> s_log_block_size);
 	descriptor = (struct ext2_group_desc *)(disk + EXT2_BLOCK_SIZE + block_size);
@@ -25,21 +39,92 @@ void init_datastructures() {
 	inode_table = (struct ext2_inode *)(disk + descriptor -> bg_inode_table * block_size);
 	inode_bitmap = disk + descriptor -> bg_inode_bitmap * block_size;
 	block_bitmap = disk + descriptor -> bg_block_bitmap * block_size;
-
+	root_directory = (struct ext2_dir_entry_2*)(disk + inode_table[EXT2_ROOT_INO-1].i_block[0]* EXT2_BLOCK_SIZE);
 	i_bitmap_size = (sb->s_inodes_count)/(sizeof(unsigned char) * 8);
 	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8);
-	printf("inode_bitmap: ");
-	print_bitmap(i_bitmap_size, inode_bitmap);
-	printf("\n");
-	printf("block_bitmap: ");
-	print_bitmap(b_bitmap_size, block_bitmap);
-	printf("\n");
+	LOG("inode_bitmap: ");
+	for (int i = 0; i < i_bitmap_size; i++) {
+
+			/* Looping through each bit a byte. */
+			for (int k = 0; k < 8; k++) {
+					LOG("%d", (inode_bitmap[i] >> k) & 1);
+			}
+			LOG(" ");
+	}
+	LOG("\n");
+	LOG("block_bitmap: ");
+	for (int i = 0; i < b_bitmap_size; i++) {
+
+			/* Looping through each bit a byte. */
+			for (int k = 0; k < 8; k++) {
+					LOG("%d", (block_bitmap[i] >> k) & 1);
+			}
+			LOG(" ");
+	}
+	LOG("\n");
 }
 
-/*
- * Open the image and initailize the disk
- */
+
+#ifdef WIN32
+
+//Load Image FS in the memory
 void open_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
+	FILE* fd = fopen(virtual_disk, "r+b");
+	if (fd == 0)
+	{
+		fprintf(stderr, "Error: Open image file failed\n");
+		exit(3);
+	}
+
+	disk = malloc(FS_SIZE);
+	if (disk == NULL) {
+		fprintf(stderr, "Error: Memory allocation failed\n");
+		fclose(fd);
+		exit(1);
+	}
+	int ret = fread(disk, FS_SIZE, 1, fd);
+	if (ret != 1)
+	{
+		free(disk);
+		fprintf(stderr, "Error: Load image file failed\n");
+		fclose(fd);
+		exit(2);
+	}
+	fclose(fd);
+}
+
+void save_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
+	FILE* fd = fopen(virtual_disk, "w+b");
+	if (fd == 0)
+	{
+		free(disk);
+		fprintf(stderr, "Error: Open image file failed\n");
+		exit(3);
+	}
+	int ret = fwrite(disk, FS_SIZE, 1, fd);
+	if (ret != 1)
+	{
+		free(disk);
+		fprintf(stderr, "Error: Save image file failed\n");
+		fclose(fd);
+		exit(2);
+	}
+	fclose(fd);
+}
+
+//Close FS image and Free FS memeory
+void close_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
+	free(disk);
+}
+
+
+#else
+//Load Image FS in the memory
+void open_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
 	int fd = open(virtual_disk, O_RDWR);
 
 	disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -49,17 +134,23 @@ void open_image(char * virtual_disk) {
 	}
 }
 
+//Close FS image and Free FS memeory
+void close_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
+
+}
+
+#endif
 
 
-
-// --------------------------- Traversing a Path -----------------------------//
 /*
  * Returns the inode number of file that is at the end of the path.
  * If the file is not found then return 0
- */
+ * Referenced from https://www.geeksforgeeks.org/how-to-split-a-string-in-cc-python-and-java/
+*/
 unsigned int path_walk(char * path) {
+	TRACE("%s\n", __func__);
 
-	// Referenced from https://www.geeksforgeeks.org/how-to-split-a-string-in-cc-python-and-java/
   char *token = strtok(path, "/");
 	int inode_no = EXT2_ROOT_INO;
 
@@ -77,8 +168,10 @@ unsigned int path_walk(char * path) {
 		}
     token = strtok(NULL, "/");
   }
+
 	return inode_no;
 }
+
 
 /*
  * Checks to see whether or not the file with file name 'name' is in the
@@ -86,6 +179,7 @@ unsigned int path_walk(char * path) {
  * Returns the inode_no number if found. Otherwise return 0
  */
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int)){
+	TRACE("%s\n", __func__);
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
 	unsigned int * inode_block = inode->i_block;
 	unsigned int * current_block = inode_block;
@@ -198,6 +292,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index){
+	TRACE("%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * singly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return singly_indirect;
@@ -211,6 +306,7 @@ unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * i
  * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index) {
+	TRACE("%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * doubly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return find_singly_indirect(doubly_indirect, i, index);
@@ -224,6 +320,7 @@ unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, 
 * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index) {
+	TRACE("%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * triply_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return find_doubly_indirect(triply_indirect, i, j, index);
@@ -242,6 +339,7 @@ unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, 
  * Return -1 to indicate to the check_directory to keep printing all files
  */
 int print_file(unsigned int * block, int block_idx, char * null, int include_all) {
+	TRACE("%s\n", __func__);
 	int block_no = block[block_idx];
 	if (block_no != 0) {
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
@@ -257,7 +355,7 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 			}
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
-			i_entry = (void *)i_entry + i_entry->rec_len;
+			i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
@@ -273,6 +371,7 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
  * and returns that block number. Return -1 if no free blocks.
  */
 int check_entry(unsigned int * block, int block_idx, char * name, int checking_free){
+	TRACE("%s\n", __func__);
 	int block_no = block[block_idx];
 	if (block_no != 0) {
 
@@ -288,7 +387,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			inode_no = i_entry->inode;
 			if (inode_no){
 				count+= i_entry->rec_len;
-				i_entry = (void *)i_entry + i_entry->rec_len;
+				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 			}
 
 		}
@@ -312,6 +411,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
  * Returns -1 if no space is found
  */
 int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
+	TRACE("%s\n", __func__);
 	static unsigned int * prev_block = 0;
 	static unsigned int prev_idx = 0;
 
@@ -359,8 +459,9 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
  * Create a new file at the path 'path' with a file type 'file_type'
  */
 int create_file(char * path, int file_type) {
+	TRACE("%s\n", __func__);
 	char file[EXT2_NAME_LEN];
-	char dir[strlen(path)];
+	char dir[EXT2_PATH_LEN];
 	split_path(path, file, dir);
 	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
@@ -399,8 +500,9 @@ int create_file(char * path, int file_type) {
  * The name of the file is 'name' of file type 'file_type'
  */
 void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
+	TRACE("%s\n", __func__);
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	i_entry = (void *)i_entry + displacement;
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + displacement);
 	i_entry->inode = inode_no;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
@@ -416,6 +518,7 @@ void create_new_entry(int block_no, int inode_no, int displacement, char * name,
  */
 void create_inode(int new_inode_no){
 
+	TRACE("%s\n", __func__);
 	// Reset all values to be the default
 	struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 	for (int i = 0; i < 15; i++) {
@@ -434,6 +537,7 @@ void create_inode(int new_inode_no){
  * Extracts the filename and dir from the path
  */
 void split_path(char * path, char * name, char * dir) {
+	TRACE("%s\n", __func__);
 	int count = 0;
 	int name_idx = 0;
 	int dir_idx = 0;
@@ -466,6 +570,7 @@ void split_path(char * path, char * name, char * dir) {
  * Append the substring 'substring' to str
  */
 void str_cat(char * str, char * substring, int * index) {
+	TRACE("%s\n", __func__);
 	int count = 0;
 	while (count < strlen(substring)) {
 		(str)[*index] = substring[count];
@@ -484,6 +589,7 @@ void str_cat(char * str, char * substring, int * index) {
  * spot. If no free spot is found return -ENOMEM
  */
 int search_bitmap(unsigned char * bitmap, int max) {
+	TRACE("%s\n", __func__);
 	for (int i = 0; i < max; i++) {
 
 			/* Looping through each bit a byte. */
@@ -502,6 +608,7 @@ int search_bitmap(unsigned char * bitmap, int max) {
  * Update the bitmap, and set the bit at index 'index' to 1
  */
 void take_spot(unsigned char * bitmap, int index) {
+	TRACE("%s\n", __func__);
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
@@ -515,6 +622,7 @@ void take_spot(unsigned char * bitmap, int index) {
  * Updates the bitmap and sets the bit ad index 'index' to 0
  */
 void free_spot(unsigned char * bitmap, int index) {
+	TRACE("%s\n", __func__);
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
@@ -524,6 +632,7 @@ void free_spot(unsigned char * bitmap, int index) {
  * Prints out the bitmap
  */
 void print_bitmap(int bitmap_size, unsigned char * bitmap){
+	TRACE("%s\n", __func__);
 	for (int i = 0; i < bitmap_size; i++) {
 
 			/* Looping through each bit a byte. */
@@ -539,6 +648,7 @@ void print_bitmap(int bitmap_size, unsigned char * bitmap){
 
 //--------------------------- Initializing Files -----------------------------//
 void init_dir(int dir_inode_no, int parent_inode_no) {
+	TRACE("%s\n", __func__);
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 	dir_inode->i_mode = dir_inode->i_mode | EXT2_S_IFDIR;
 	int block_no = search_bitmap(block_bitmap, b_bitmap_size);
@@ -560,12 +670,14 @@ void init_dir(int dir_inode_no, int parent_inode_no) {
 
 
 void init_link(int link_inode_no, int file_inode_no) {
+	TRACE("%s\n", __func__);
 	struct ext2_inode * link_inode = inode_table + (link_inode_no - 1);
 	link_inode->i_mode = link_inode->i_mode | EXT2_S_IFLNK;
 }
 
 
 void init_reg(int reg_inode_no){
+	TRACE("%s\n", __func__);
 	struct ext2_inode * reg_inode = inode_table + (reg_inode_no - 1);
 	reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 }
