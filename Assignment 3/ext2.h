@@ -256,7 +256,7 @@ struct ext2_dir_entry_2 {
 #define __func__ __FUNCTION__ 
 #endif
 
-#define roundup(a, b) 
+#define roundup(a, b) (((a)+(b)-1)&(-b))
 
 #endif
 

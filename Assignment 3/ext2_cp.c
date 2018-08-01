@@ -12,82 +12,119 @@ int main(int argc, char ** argv){
 	if (argc != 4) {
 		fprintf(stderr, "Error Missing parameters. It requires 3 parameters\n");
 		fprintf(stderr, "Usage: ext2_cp <disk.img> <Src_file_path> <dest_path>\n");
-		exit(1);
+		exit(ENOENT);
 	}
 
 	char * virtual_disk = argv[1];
 	char * file_path = argv[2];
 	char * dir_path = argv[3];
+	char dest_path[EXT2_PATH_LEN];
+	char dest_file[EXT2_NAME_LEN];
+	char dest_path_file[EXT2_PATH_LEN];
+	char src_path[EXT2_PATH_LEN];
+	int ret = 0;
 
 	// Error checking on the 2nd and 3rd argument making sure that they
 	// are valid arguments
 	if (!strlen(file_path) || file_path[strlen(file_path) - 1] == '/') {
 		fprintf(stderr, "Error: Invalid source file path\n");
-		exit(2);
+		exit(ENOENT);
 	}
 
-#if 0  //wrong!
-	if (!strlen(dir_path) || dir_path[strlen(dir_path) - 1] != '/') {
-		fprintf(stderr, "Error: Invalid destination path\n");
-		exit(3);
+	split_path(file_path, dest_file, src_path);
+
+	if (!strlen(dest_file)) {
+		fprintf(stderr, "Error: Invalid source file name\n");
+		exit(ENOENT);
 	}
-#endif
+
+	if (!strlen(dir_path)) {
+		fprintf(stderr, "Error: Invalid destination path\n");
+		exit(ENOENT);
+	}
+
+	strcpy(dest_path, dir_path);
+	if (dest_path[strlen(dest_path) - 1] != '/') {
+		strcat(dest_path,"/");
+	}
+
+	strcpy(dest_path_file, dest_path);
+	strcat(dest_path_file, dest_file);
 
 	//--------------------------- open the image ------------------------------//
 	open_image(virtual_disk);
 
 	init_datastructures();
 
-	//---------------------------- go to the dest directory inode ----------------------//
-	unsigned int dir_inode_no;
-	if (!(dir_inode_no = path_walk(dir_path))) {
-		fprintf(stderr, "Error: Destination path not found\n");
-		exit(4);
-	}
-
-	struct ext2_inode * dir = inode_table + (dir_inode_no - 1);
-	if (!(dir->i_mode & EXT2_S_IFDIR)) {
-		fprintf(stderr, "Error: Destination path not found\n");
-		exit(5);
-	}
-
 
 	//---------------------------- open and read the file -------------------------//
-	FILE * file = fopen(file_path, "r");
+	FILE * file = fopen(file_path, "rb");
 	char buf[EXT2_BLOCK_SIZE];
 
 	if (file != NULL) {
-		fprintf(stderr, "read\n");
 
-		int inode_no;
-		printf("inode ");
-		inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
-		if (inode_no == -ENOMEM) {
-			fprintf(stderr, "no space in the inode bitmap\n");
-			return -ENOMEM;
+		//---------------------------- go to the dest directory inode ----------------------//
+		unsigned int dir_inode_no;
+		dir_inode_no = path_walk(dest_path);
+		if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
+				fprintf(stderr, "Error: Destination path not found\n");
+			ret = ENOENT;
+			goto adr_exit;
 		}
-		take_spot(inode_bitmap, inode_no);
 
-		create_inode(inode_no, EXT2_FT_REG_FILE);
-		while (fread(buf, EXT2_BLOCK_SIZE, 1, file) > 0){
+		struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
+		if (!(dir_inode->i_mode & EXT2_S_IFDIR)) {
+			fprintf(stderr, "Error: Destination path not found\n");
+			ret = ENOENT;
+			goto adr_exit;
+		}
+
+		unsigned int file_inode_no;
+		file_inode_no = path_walk(dest_path_file);
+		if (file_inode_no == -ENOENT || file_inode_no == -ENOTDIR) {
+				//file doesn't exist
+
+			file_inode_no = check_directory(dest_file, dir_inode_no, EXT2_FT_REG_FILE, &add_entry);
+			if (!file_inode_no) {
+				fprintf(stderr, "Error: Unable to create file\n");
+				ret=-ENOENT;
+				goto adr_exit;
+			}
+
+		}
+		else
+		{
+			//file already exist in file_inode_no
+			//deallocate blocks
+			struct ext2_inode * file_inode = inode_table + (file_inode_no - 1);
+			for (int i = 0; i < 15; i++) {
+				free_spot(block_bitmap, file_inode->i_block[i]);
+				file_inode->i_block[i] = 0;
+			}
+			file_inode->i_dtime = 0; // remove deletion time
+			file_inode->i_links_count = 1;
+			file_inode->i_blocks = 0;
+		}
+		//allocate blocks and copy data
+		while (fread(buf, 1, EXT2_BLOCK_SIZE, file) > 0) {
 			//printf("%s", buf);
 			// for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
 			// 	printf("%c", buf[i]);
-			 //}
-			write_file(buf, inode_no);
+			//}
+			write_file(buf, file_inode_no);
 		}
 
+		fclose(file);
 	} else {
 		fprintf(stderr, "File does not exist\n");
-		exit(1);
+		ret= EEXIST;
 	}
 
-
-	fclose(file);
+adr_exit:
 	save_image(virtual_disk);
 	close_image(disk);
 
-	return(0);
+	return(ret);
 }
 
 
