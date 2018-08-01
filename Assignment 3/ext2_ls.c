@@ -22,10 +22,9 @@ int main(int argc, char ** argv){
 		virtual_disk = argv[1];
 		path = argv[3];
 	} else {
-		fprintf(stderr, "unknown flag specified");
-		return -ENOENT;
+		fprintf(stderr, "unknown flag specified\n");
+		return ENOENT;
 	}
-
 
 	//----------------------------- open the image -----------------------------//
 	open_image(virtual_disk);
@@ -34,19 +33,23 @@ int main(int argc, char ** argv){
 	init_datastructures();
 
 	//-------------------------- go to the paths inode -------------------------//
-	unsigned int inode_no;
-	if (!(inode_no = path_walk(path))) {
-		fprintf(stderr, "Path does not exist\n");
-		return -ENOENT;
+	int inode_no = path_walk(path);
+	if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
+		return inode_no * -1;
 	}
 
 	//----------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ---------------//
-	struct ext2_inode * dir = inode_table + (inode_no - 1);
-	if (!(dir->i_mode & EXT2_S_IFDIR)) {
-		fprintf(stderr, "Working on a directory\n");
-		return -ENOENT;
+	struct ext2_inode * dir_inode = inode_table + (inode_no - 1);
+	if (!(dir_inode->i_mode & EXT2_S_IFDIR)) {
+		char name[EXT2_NAME_LEN];
+		char dir[strlen(path)];
+		split_path(path, name, dir);
+		printf("%s\n",name);
+		return 0;
 	}
 	check_directory(NULL, inode_no, check_all, &print_file);
+
+
 
 	return 0;
 }

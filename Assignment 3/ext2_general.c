@@ -55,29 +55,43 @@ void open_image(char * virtual_disk) {
 // --------------------------- Traversing a Path -----------------------------//
 /*
  * Returns the inode number of file that is at the end of the path.
- * If the file is not found then return 0
+ * If the file is not found then return -ENOENT or if is not a directory
  */
-unsigned int path_walk(char * path) {
-
-	// Referenced from https://www.geeksforgeeks.org/how-to-split-a-string-in-cc-python-and-java/
-  char *token = strtok(path, "/");
+int path_walk(char * path) {
+	char name[EXT2_NAME_LEN];
+	int name_idx = 0;
+	int path_idx = 0;
 	int inode_no = EXT2_ROOT_INO;
-
+	bool is_dir = true;
 	struct ext2_inode * curr;
+	while(path_idx < strlen(path)) {
 
-  while (token != NULL) {
-		curr = inode_table + (inode_no - 1);
-		if (!(curr->i_mode & EXT2_S_IFDIR)) {
-			fprintf(stderr, "working on a file\n");
-			exit(1);
+		// Get the name of the next file
+		name_idx = 0;
+		is_dir = false;
+		while(path_idx < strlen(path) && path[path_idx] != '/') {
+			name[name_idx] = path[path_idx];
+			name_idx++;
+			path_idx++;
+			if (path[path_idx] == '/') {
+				is_dir = true;
+			}
 		}
-		inode_no = check_directory(token, inode_no, 0, &check_entry);
+		name[name_idx] = '\0';
+		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (!inode_no) {
-			return 0;
+			fprintf(stderr, "Path does not exist\n");
+			return -ENOENT;
 		}
-    token = strtok(NULL, "/");
-  }
+		curr = inode_table + (inode_no - 1);
+		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
+			fprintf(stderr, "That is not a directory\n");
+			return -ENOTDIR;
+		}
+		path_idx++;
+	}
 	return inode_no;
+
 }
 
 /*
@@ -92,7 +106,6 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 	int curr_index = 0;
 	// Initialize all the variables needed
 	int index = 0;
-	bool end_next_loop = false;
 
 	int i = 0;
 	int j = 0;
@@ -106,11 +119,6 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 		int return_val;
 		if ((return_val = (*fun_ptr)(current_block, curr_index, name, flag)) >= 0) {
 			return return_val;
-		}
-
-		// Terminating condition
-		if (end_next_loop) {
-			return 0;
 		}
 
 		// Perform checks on the iblocks
@@ -129,7 +137,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 		else if (index == 12) { //SINGLY INDIRECT
 			// Set the next variables
 			i++;
-			if (i == 257) { // If there are no more
+			if (i == 256) { // If there are no more
 				index++;
 				i = 0;
 				printf("Now gonna check 13th entry -- doubly indirects \n");
@@ -147,10 +155,10 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 
 		else if (index == 13) { //DOUBLY INDIRECT
 			i++;
-			if (i == 257) {
+			if (i == 256) {
 				i = 0;
 				j++;
-				if (j == 257) {
+				if (j == 256) {
 					j = 0;
 					index++;
 					printf("Now gonna check 14th entry -- triply indirects \n");
@@ -168,13 +176,13 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 
 		else if (index == 14) { //TRIPLY INDIRECT
 			i++;
-			if (i == 257) {
+			if (i == 256) {
 				i = 0;
 				j++;
-				if (j == 257) {
+				if (j == 256) {
 					j = 0;
 					k++;
-					if (k == 257) { //searched the entire thing but doesn't exist
+					if (k == 256) { //searched the entire thing but doesn't exist
 						index++;
 					}
 				}
@@ -185,10 +193,6 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			}
 		}
 
-		// Checks if current block is valid
-		if (!current_block[curr_index]) {
-			end_next_loop = true;
-		}
 	}
 	return 0;
 }
@@ -241,7 +245,7 @@ unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, 
  * the hidden files if flag is NULL. If flag is not NULL the print all files.
  * Return -1 to indicate to the check_directory to keep printing all files
  */
-int print_file(unsigned int * block, int block_idx, char * null, int include_all) {
+int print_file(unsigned int * block, int block_idx, char * cmp_name, int include_all) {
 	int block_no = block[block_idx];
 	if (block_no != 0) {
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
@@ -250,8 +254,6 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 		int count = 0;
 		while (inode_no != 0 && count < EXT2_BLOCK_SIZE) {
 			char * name = i_entry -> name;
-
-			// Check to see if hidden files are allowed
 			if (include_all || (strlen(name) > 0 && !(name[0] == '.'))) {
 				printf("%s\n", i_entry->name);
 			}
@@ -311,45 +313,91 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
  * new file's inode
  * Returns -1 if no space is found
  */
-int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
-	static unsigned int * prev_block = 0;
-	static unsigned int prev_idx = 0;
 
-	// Checks to see if the current block exists
-	if (!block[block_idx]) {
-
-		// Create the new inode for directory
-		int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
-		if (new_inode_no == -ENOMEM) {
-			fprintf(stderr, "no space in inode bitmap\n");
-			exit(1);
-		}
-		take_spot(inode_bitmap, new_inode_no);
-		create_inode(new_inode_no);
-		// Check the entries and see if we can add name to previous
-		int idx = check_entry(prev_block, prev_idx, name, 1);
-
-		int block_no = prev_block[prev_idx];
-		if (idx < 0) { //If there is no space in the previous block
-			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
-			if (singly_block_no == -ENOMEM) {
-				fprintf(stderr, "no space in block bitmap\n");
-				exit(1);
-			}
-			take_spot(block_bitmap, singly_block_no);
-			block[block_idx] = singly_block_no;
-			block_no = singly_block_no;
-			idx = 0;
-		}
-
-		// Create the new entry
-		create_new_entry(block_no, new_inode_no, idx, name, file_type);
-		return new_inode_no;
+ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
+ 	static unsigned int * prev_block = 0;
+ 	static unsigned int prev_idx = 0;
+	int idx = -1;
+	if (prev_block != 0) {
+		// Check to see if there is space in the previous entry
+		idx = check_entry(prev_block, prev_idx, name, 1);
 	}
-	prev_block = block;
-	prev_idx = block_idx;
-	return -1;
-}
+ 	// Checks to see if the current block exists
+ 	if (idx >= 0 || !block[block_idx]) {
+
+ 		// Create the new inode for directory
+ 		int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+ 		if (new_inode_no == -ENOMEM) {
+ 			fprintf(stderr, "no space in inode bitmap\n");
+ 			exit(1);
+ 		}
+ 		take_spot(inode_bitmap, new_inode_no);
+ 		create_inode(new_inode_no);
+ 		// Check the entries and see if we can add name to previous
+
+ 		int block_no = prev_block[prev_idx];
+ 		if (idx < 0) { //If there is no space in the previous block
+ 			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+ 			if (singly_block_no == -ENOMEM) {
+ 				fprintf(stderr, "no space in block bitmap\n");
+ 				exit(1);
+ 			}
+ 			take_spot(block_bitmap, singly_block_no);
+ 			block[block_idx] = singly_block_no;
+ 			block_no = singly_block_no;
+ 			idx = 0;
+ 		}
+
+ 		// Create the new entry
+ 		create_new_entry(block_no, new_inode_no, idx, name, file_type);
+ 		return new_inode_no;
+ 	}
+ 	prev_block = block;
+ 	prev_idx = block_idx;
+ 	return -1;
+ }
+
+
+
+// int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
+// 	static unsigned int * prev_block = 0;
+// 	static unsigned int prev_idx = 0;
+//
+// 	// Checks to see if the current block exists
+// 	if (!block[block_idx]) {
+//
+// 		// Create the new inode for directory
+// 		int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+// 		if (new_inode_no == -ENOMEM) {
+// 			fprintf(stderr, "no space in inode bitmap\n");
+// 			exit(1);
+// 		}
+// 		take_spot(inode_bitmap, new_inode_no);
+// 		create_inode(new_inode_no);
+// 		// Check the entries and see if we can add name to previous
+// 		int idx = check_entry(prev_block, prev_idx, name, 1);
+//
+// 		int block_no = prev_block[prev_idx];
+// 		if (idx < 0) { //If there is no space in the previous block
+// 			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
+// 			if (singly_block_no == -ENOMEM) {
+// 				fprintf(stderr, "no space in block bitmap\n");
+// 				exit(1);
+// 			}
+// 			take_spot(block_bitmap, singly_block_no);
+// 			block[block_idx] = singly_block_no;
+// 			block_no = singly_block_no;
+// 			idx = 0;
+// 		}
+//
+// 		// Create the new entry
+// 		create_new_entry(block_no, new_inode_no, idx, name, file_type);
+// 		return new_inode_no;
+// 	}
+// 	prev_block = block;
+// 	prev_idx = block_idx;
+// 	return -1;
+// }
 
 
 
@@ -364,25 +412,23 @@ int create_file(char * path, int file_type) {
 	split_path(path, file, dir);
 	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
-	unsigned int dir_inode_no;
-	if (!(dir_inode_no = path_walk(dir))) {
-		fprintf(stderr, "Not a valid path\n");
-		return -ENOENT;
+	int dir_inode_no = path_walk(dir);
+	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
+		return dir_inode_no * -1;
 	}
 
 	// Checks to see if the file already exists
 	unsigned int dir_inode = check_directory(file, dir_inode_no, 0, &check_entry);
 	if (dir_inode) {
-
 			fprintf(stderr, "File with the same name exists\n");
-			return -EEXIST;
+			return EEXIST;
 	}
 
 	// add the inode to the dir_inode i_block
 	unsigned int file_inode_no = check_directory(file, dir_inode_no, file_type, &add_entry);
 	if (!file_inode_no) {
 		fprintf(stderr, "Unable to create file\n");
-		return -ENOENT;
+		return ENOENT;
 	}
 
 	if (file_type == EXT2_FT_DIR){

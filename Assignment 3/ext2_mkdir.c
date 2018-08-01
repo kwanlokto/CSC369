@@ -3,8 +3,8 @@
 
 int main(int argc, char ** argv) {
 	if (argc != 3) {
-		fprintf(stderr, "Requires 2 args\n");
-		exit(1);
+		fprintf(stderr, "mkdir requires 2 args\n");
+		return ENOENT;
 	}
 
 	char * virtual_disk = argv[1];
