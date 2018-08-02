@@ -120,6 +120,10 @@ void open_image(char * virtual_disk) {
 	}
 }
 
+void save_image(char * virtual_disk) {
+	TRACE("%s\n", __func__);
+}
+
 //Close FS image and Free FS memeory
 void close_image(char * virtual_disk) {
 	TRACE("%s\n", __func__);
