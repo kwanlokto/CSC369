@@ -54,7 +54,7 @@ void init_datastructures() {
 #ifdef WIN32
 
 //Load Image FS in the memory
-void open_image(char * virtual_disk) {
+void open_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 	FILE* fd = fopen(virtual_disk, "r+b");
 	if (fd == 0)
@@ -80,7 +80,7 @@ void open_image(char * virtual_disk) {
 	fclose(fd);
 }
 
-void save_image(char * virtual_disk) {
+void save_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 	FILE* fd = fopen(virtual_disk, "w+b");
 	if (fd == 0)
@@ -101,7 +101,7 @@ void save_image(char * virtual_disk) {
 }
 
 //Close FS image and Free FS memeory
-void close_image(char * virtual_disk) {
+void close_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 	free(disk);
 }
@@ -109,7 +109,7 @@ void close_image(char * virtual_disk) {
 
 #else
 //Load Image FS in the memory
-void open_image(char * virtual_disk) {
+void open_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 	int fd = open(virtual_disk, O_RDWR);
 
@@ -120,12 +120,12 @@ void open_image(char * virtual_disk) {
 	}
 }
 
-void save_image(char * virtual_disk) {
+void save_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 }
 
 //Close FS image and Free FS memeory
-void close_image(char * virtual_disk) {
+void close_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
 
 }
@@ -168,12 +168,12 @@ int path_walk(char * path) {
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (!inode_no) {
-			LOG(stderr, "Path does not exist\n");
+			//fprintf(stderr, "Path does not exist\n");
 			return -ENOENT;
 		}
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
-			LOG(stderr, "That is not a directory\n");
+			//fprintf(stderr, "That is not a directory\n");
 			return -ENOTDIR;
 		}
 		path_idx++;

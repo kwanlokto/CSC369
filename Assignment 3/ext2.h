@@ -286,8 +286,8 @@ int b_bitmap_size;
 
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
-void open_image(char * virtual_disk);
-void close_image(char * virtual_disk);
+void open_image(unsigned char * virtual_disk);
+void close_image(unsigned char * virtual_disk);
 
 int path_walk(char * path);
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
