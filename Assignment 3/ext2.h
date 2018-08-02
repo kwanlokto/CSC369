@@ -35,7 +35,7 @@
 #define CSC369A3_EXT2_FS_H
 
 #define DEBUG_EN
-//#define TRACE_EN
+//#define //TRACE_EN
 
 
 #define EXT2_BLOCK_SIZE 1024
@@ -253,9 +253,9 @@ struct ext2_dir_entry_2 {
 #endif
 
 #ifdef TRACE_EN
-#define TRACE(format, ...) printf(format, __VA_ARGS__)
+//#define TRACE(format, ...) printf(format, __VA_ARGS__)
 #else
-#define TRACE(format, ...)
+//#define TRACE(format, ...)
 #endif
 
 #else

@@ -8,7 +8,7 @@ int write_file(char *buf, int inode_no);
 
 
 int main(int argc, char ** argv){
-	TRACE("%s\n", __func__);
+	//TRACE("%s\n", __func__);
 	if (argc != 4) {
 		fprintf(stderr, "Error Missing parameters. It requires 3 parameters\n");
 		fprintf(stderr, "Usage: ext2_cp <disk.img> <Src_file_path> <dest_path>\n");

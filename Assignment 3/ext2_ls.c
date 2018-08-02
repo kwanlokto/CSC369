@@ -7,7 +7,7 @@ ext2_ls: This program takes two command line arguments. The first is the name of
 extern unsigned char * disk;
 
 int main(int argc, char ** argv){
-	TRACE("%s\n", __func__);
+	//TRACE("%s\n", __func__);
 	if (argc < 3 || argc > 4){
 		fprintf(stderr, "ls command requires 2 arguments\n");
 		exit(1);
