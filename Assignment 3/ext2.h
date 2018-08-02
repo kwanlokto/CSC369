@@ -244,6 +244,8 @@ struct ext2_dir_entry_2 {
 
 #define    EXT2_FT_MAX      8
 
+#ifdef WIN32
+
 #ifdef DEBUG_EN
 #define LOG(format, ...) printf(format, __VA_ARGS__)
 #else
@@ -254,6 +256,11 @@ struct ext2_dir_entry_2 {
 #define TRACE(format, ...) printf(format, __VA_ARGS__)
 #else
 #define TRACE(format, ...)
+#endif
+
+#else
+#define LOG printf
+//#define TRACE printf
 #endif
 
 #if defined ( WIN32 )

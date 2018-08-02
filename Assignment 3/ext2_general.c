@@ -354,7 +354,7 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 			}
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
-			i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
+			i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
@@ -386,7 +386,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
 			if (count < EXT2_BLOCK_SIZE) {
-				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
+				i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
 			}
 		}
 
@@ -541,7 +541,7 @@ int create_file(char * path, int file_type) {
 void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
 	TRACE("%s\n", __func__);
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + displacement);
+	i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + displacement);
 	i_entry->inode = inode_no;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
