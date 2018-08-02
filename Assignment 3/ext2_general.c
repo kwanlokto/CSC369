@@ -161,12 +161,12 @@ unsigned int path_walk(char * path) {
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (!inode_no) {
-			fprintf(stderr, "Path does not exist\n");
+			LOG(stderr, "Path does not exist\n");
 			return -ENOENT;
 		}
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
-			fprintf(stderr, "That is not a directory\n");
+			LOG(stderr, "That is not a directory\n");
 			return -ENOTDIR;
 		}
 		path_idx++;
@@ -208,7 +208,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			// Set the next variables
 			index++;
 			if (index == 12) {
-				printf("Now gonna check 12th entry -- singly indirects \n");
+				LOG("Now gonna check 12th entry -- singly indirects \n");
 				current_block = find_singly_indirect(inode_block, index, &curr_index);
 				//curr_index = 0;
 			} else {
@@ -222,7 +222,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			if (i == 256) { // If there are no more
 				index++;
 				i = 0;
-				printf("Now gonna check 13th entry -- doubly indirects \n");
+				LOG("Now gonna check 13th entry -- doubly indirects \n");
 				curr_index = 0;
 				current_block = find_doubly_indirect(inode_block, index, i, &curr_index);
 			}
@@ -243,7 +243,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 				if (j == 256) {
 					j = 0;
 					index++;
-					printf("Now gonna check 14th entry -- triply indirects \n");
+					LOG("Now gonna check 14th entry -- triply indirects \n");
 					curr_index = 0;
 					current_block = find_triply_indirect(inode_block, index, i, j, &curr_index);
 				}
@@ -494,7 +494,7 @@ int create_file(char * path, int file_type) {
 	char file[EXT2_NAME_LEN];
 	char dir[EXT2_PATH_LEN];
 	split_path(path, file, dir);
-	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
+	LOG("path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
@@ -517,7 +517,7 @@ int create_file(char * path, int file_type) {
 	}
 
 	if (file_type == EXT2_FT_DIR){
-		printf("directory\n");
+		LOG("directory\n");
 		init_dir(file_inode_no, dir_inode_no);
 	}
 	// initialize the directory inode
@@ -665,9 +665,9 @@ void print_bitmap(int bitmap_size, unsigned char * bitmap){
 
 			/* Looping through each bit a byte. */
 			for (int k = 0; k < 8; k++) {
-					printf("%d", (bitmap[i] >> k) & 1);
+					LOG("%d", (bitmap[i] >> k) & 1);
 			}
-			printf(" ");
+			LOG(" ");
 	}
 }
 

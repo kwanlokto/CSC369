@@ -107,10 +107,6 @@ int main(int argc, char ** argv){
 		}
 		//allocate blocks and copy data
 		while (fread(buf, 1, EXT2_BLOCK_SIZE, file) > 0) {
-			//printf("%s", buf);
-			// for (int i = 0; i < EXT2_BLOCK_SIZE; i++) {
-			// 	printf("%c", buf[i]);
-			//}
 			write_file(buf, file_inode_no);
 		}
 
@@ -150,7 +146,7 @@ int write_file(char *buf, int inode_no) {
 
 
 
-	printf("block ");
+	LOG("block ");
 	block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (block_no == -ENOMEM) {
 		fprintf(stderr, "no space in the block bitmap\n");
