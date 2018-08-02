@@ -134,7 +134,7 @@ void close_image(char * virtual_disk) {
  * If the file is not found then return 0
  * Referenced from https://www.geeksforgeeks.org/how-to-split-a-string-in-cc-python-and-java/
 */
-unsigned int path_walk(char * path) {
+int path_walk(char * path) {
 	TRACE("%s\n", __func__);
 
 	char path_c[EXT2_PATH_LEN];
@@ -150,6 +150,9 @@ unsigned int path_walk(char * path) {
 		// Get the name of the next file
 		name_idx = 0;
 		is_dir = false;
+		if (path_idx == 0 && path_c[path_idx] == '/') {
+			path_idx++;
+		}
 		while(path_idx < strlen(path_c) && path_c[path_idx] != '/') {
 			name[name_idx] = path_c[path_idx];
 			name_idx++;
@@ -377,18 +380,20 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 				}
 			}
 			inode_no = i_entry->inode;
-			if (inode_no){
-				count+= i_entry->rec_len;
+			count+= i_entry->rec_len;
+			if (count < EXT2_BLOCK_SIZE) {
 				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 			}
-
 		}
 
-		if (checking_free && count < EXT2_BLOCK_SIZE) {
-			int current_idx = count - i_entry->inode;
+		if (checking_free) {
+			int current_idx = count - i_entry->rec_len;
 			int current_size = sizeof(struct ext2_dir_entry_2) + i_entry->name_len;
 			int adding_size = sizeof(struct ext2_dir_entry_2) + strlen(name);
-			if (current_idx + current_size + adding_size < EXT2_BLOCK_SIZE) {
+			int new_rec_len = current_idx + current_size + adding_size;
+
+			printf("curr_idx %d, curr_size %d, new_rec %d\n", current_idx, current_size, new_rec_len);
+			if (new_rec_len < EXT2_BLOCK_SIZE) {
 				i_entry->rec_len = current_size;
 				return current_idx + current_size;
 			}
@@ -625,7 +630,7 @@ int search_bitmap(unsigned char * bitmap, int max) {
 				int bit = (bitmap[i] >> k) & 1;
 				if (!bit) {
 					int index = i * 8 + k;
-					return index;
+					return index + 1;
 				}
 			}
 	}
@@ -637,6 +642,7 @@ int search_bitmap(unsigned char * bitmap, int max) {
  */
 void take_spot(unsigned char * bitmap, int index) {
 	TRACE("%s\n", __func__);
+	index -= 1;
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
@@ -651,6 +657,7 @@ void take_spot(unsigned char * bitmap, int index) {
  */
 void free_spot(unsigned char * bitmap, int index) {
 	TRACE("%s\n", __func__);
+	index -= 1;
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);

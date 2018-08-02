@@ -252,8 +252,8 @@ struct ext2_dir_entry_2 {
 #define TRACE(format, ...)
 #endif
 
-#if defined ( WIN32 ) 
-#define __func__ __FUNCTION__ 
+#if defined ( WIN32 )
+#define __func__ __FUNCTION__
 #endif
 
 #define roundup(a, b) (((a)+(b)-1)&(-b))
@@ -278,7 +278,7 @@ void init_datastructures();
 void open_image(char * virtual_disk);
 void close_image(char * virtual_disk);
 
-unsigned int path_walk(char * path);
+int path_walk(char * path);
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
 
 // Ext2_Dir_Entry operations
