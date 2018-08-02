@@ -392,7 +392,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			int adding_size = sizeof(struct ext2_dir_entry_2) + strlen(name);
 			int new_rec_len = current_idx + current_size + adding_size;
 
-			printf("curr_idx %d, curr_size %d, new_rec %d\n", current_idx, current_size, new_rec_len);
+			LOG("curr_idx %d, curr_size %d, new_rec %d\n", current_idx, current_size, new_rec_len);
 			if (new_rec_len < EXT2_BLOCK_SIZE) {
 				i_entry->rec_len = current_size;
 				return current_idx + current_size;

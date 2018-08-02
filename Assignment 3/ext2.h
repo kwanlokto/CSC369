@@ -34,6 +34,10 @@
 #ifndef CSC369A3_EXT2_FS_H
 #define CSC369A3_EXT2_FS_H
 
+#define DEBUG_EN
+//#define TRACE_EN
+
+
 #define EXT2_BLOCK_SIZE 1024
 
 /*
