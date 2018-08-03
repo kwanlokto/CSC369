@@ -287,7 +287,6 @@ int b_bitmap_size;
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
 void open_image(unsigned char * virtual_disk);
-void close_image(unsigned char * virtual_disk);
 
 int path_walk(char * path);
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
@@ -298,8 +297,8 @@ int print_file(unsigned int * block, int block_idx, char * name, int include_all
 int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
 
 void create_inode(int new_inode_no);
-void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type);
-int create_file(char * path, int file_type);
+void init_entry(int block_no, int displacement, char * name, int file_type);
+int create_file(char * path, int file_type, char * link_to);
 
 // Traversing i_block functions
 unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index);
@@ -317,5 +316,8 @@ void str_cat(char * cat_to, char * cat_from, int * index);
 void split_path(char * path, char * name, char * dir);
 
 // Initializing functions
-void init_dir(int dir_inode_no, int parent_inode_no);
-void init_link(int link_inode_no, int file_inode_no);
+int init_dir(int block_no, int parent_inode_no, char * name);
+int init_link(int block_no, char * name, int file_type, char * link_to);
+int init_reg(int block_no, char * name);
+
+int find_entry(int block_no, char * name);

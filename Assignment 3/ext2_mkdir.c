@@ -16,5 +16,5 @@ int main(int argc, char ** argv) {
 	//-------------------------- setup datastructures --------------------------//
 	init_datastructures();
 
-	return create_file(path, EXT2_FT_DIR);
+	return create_file(path, EXT2_FT_DIR, NULL);
 }
