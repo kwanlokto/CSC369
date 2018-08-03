@@ -46,25 +46,25 @@ int main(int argc, char ** argv){
 
 	//---------------------- create the symbolic link file ---------------------//
 
-	int create_link = create_file(link_path, file_type, file_path);
-	if(create_link != 0) {
-		return create_link;
-	}
-
-	//--------------------- go to the link file inode -----------------//
-	int link_inode_no;
-	if (!(link_inode_no = path_walk(file_path))) {
-		//fprintf(stderr, "Link path does not exist\n");
-		return link_inode_no;
-	}
-
-	//----------------------- go to the regular file inode ---------------------//
-	int file_inode_no;
-	if (!(file_inode_no = path_walk(file_path))) {
-		//fprintf(stderr, "File path does not exist\n");
-		return file_inode_no;
-	}
-
-	//---------------------------- initialize the link -------------------------//
+	return create_file(link_path, file_type, file_path);
+	// if(create_link != 0) {
+	// 	return create_link;
+	// }
+	// printf("file\n");
+	// //--------------------- go to the link file inode -----------------//
+	// int link_inode_no;
+	// if (!(link_inode_no = path_walk(link_path))) {
+	// 	//fprintf(stderr, "Link path does not exist\n");
+	// 	return link_inode_no;
+	// }
+	// printf("file\n")
+	// //----------------------- go to the regular file inode ---------------------//
+	// int file_inode_no;
+	// if (!(file_inode_no = path_walk(file_path))) {
+	// 	//fprintf(stderr, "File path does not exist\n");
+	// 	return file_inode_no;
+	// }
+	//
+	// //---------------------------- initialize the link -------------------------//
 
 }

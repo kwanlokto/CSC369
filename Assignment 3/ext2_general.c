@@ -502,6 +502,7 @@ int create_file(char * path, int file_type, char * link_to) {
 			return_val = init_reg(block_no, file);
 		}
 	} else {
+		LOG("link file\n");
 		return_val = init_link(block_no, file, file_type, link_to);
 	}
 	// initialize the directory inode
