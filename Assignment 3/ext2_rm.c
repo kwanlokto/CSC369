@@ -2,6 +2,10 @@
 
 extern unsigned char * disk;
 int rm_entry_from_block(unsigned int * block, int block_idx, char * null, int rm_inode);
+int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int idx);
+int delete_file(char * path, int rm_dir);
+int recursive_rm(int dir_inode_no);
+int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name);
 
 int main(int argc, char ** argv){
 	if (argc < 3 || argc > 4){

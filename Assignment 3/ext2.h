@@ -19,24 +19,17 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#ifndef WIN32
 #include <unistd.h>
-#include <sys/mman.h>
-#endif
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/mman.h>
 #include <time.h>
-#include <stdarg.h>
 
 #ifndef CSC369A3_EXT2_FS_H
 #define CSC369A3_EXT2_FS_H
-
-#define DEBUG_EN
-//#define //TRACE_EN
-
 
 #define EXT2_BLOCK_SIZE 1024
 
@@ -202,7 +195,6 @@ struct ext2_inode {
  */
 
 #define EXT2_NAME_LEN 255
-#define EXT2_PATH_LEN 2048
 
 /* WARNING: DO NOT use this struct, ext2_dir_entry_2 is the
  * one to use for the assignement */
@@ -244,50 +236,28 @@ struct ext2_dir_entry_2 {
 
 #define    EXT2_FT_MAX      8
 
-#ifdef WIN32
 
-#ifdef DEBUG_EN
-#define LOG(format, ...) printf(format, __VA_ARGS__)
-#else
-#define LOG(format, ...)
-#endif
 
-#ifdef TRACE_EN
-//#define TRACE(format, ...) printf(format, __VA_ARGS__)
-#else
-//#define TRACE(format, ...)
-#endif
 
-#else
-#define LOG printf
-//#define TRACE printf
-#endif
-
-#if defined ( WIN32 )
-#define __func__ __FUNCTION__
-#endif
-
-#define roundup(a, b) (((a)+(b)-1)&(-b))
 
 #endif
 
 //------------------------ GLOBAL VARIABLES -------------------------//
-extern unsigned char * disk;
-extern unsigned int block_size;
-extern struct ext2_inode * inode_table;
-extern struct ext2_super_block * sb;
-extern struct ext2_group_desc * descriptor;
-extern struct ext2_dir_entry_2* root_directory;
-extern unsigned char * inode_bitmap;
-extern unsigned char * block_bitmap;
+unsigned char * disk;
+unsigned int block_size;
+struct ext2_inode * inode_table;
+struct ext2_super_block * sb;
+struct ext2_group_desc * descriptor;
+unsigned char * inode_bitmap;
+unsigned char * block_bitmap;
+
 int i_bitmap_size;
 int b_bitmap_size;
 
 
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
-void open_image(unsigned char * virtual_disk);
-void close_image(unsigned char * virtual_disk);
+void open_image(char * virtual_disk);
 
 int path_walk(char * path);
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int));
