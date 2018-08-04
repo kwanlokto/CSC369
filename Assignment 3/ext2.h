@@ -307,8 +307,8 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 // Ext2_Dir_Entry operations
 int check_entry(unsigned int * block, int block_idx, char * name, int checking_free);
 int print_file(unsigned int * block, int block_idx, char * name, int include_all);
-//int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
-int add_entry(unsigned int * block, int block_idx, char * name, int file_type);
+int add_entry(unsigned int * block, int block_idx, char * name, int add_dir);
+char * get_name(char * old_name, int size);
 
 void create_inode(int new_inode_no);
 void init_entry(int block_no, int displacement, char * name, int file_type);

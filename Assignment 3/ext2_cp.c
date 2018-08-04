@@ -82,24 +82,12 @@ int main(int argc, char ** argv){
 		unsigned int file_inode_no;
 		file_inode_no = path_walk(dest_path_file);
 		if (file_inode_no == -ENOENT || file_inode_no == -ENOTDIR) {
-				//file doesn't exist
-#if 0
-			file_inode_no = check_directory(dest_file, dir_inode_no, EXT2_FT_REG_FILE, &add_entry);
-			if (!file_inode_no) {
-				fprintf(stderr, "Error: Unable to create file\n");
-				ret=-ENOENT;
-				goto adr_exit;
-			}
-#endif
-			file_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
-			if (file_inode_no == -ENOMEM) {
-				fprintf(stderr, "no space in the inode bitmap\n");
-				return -ENOMEM;
-			}
-			take_spot(inode_bitmap, file_inode_no);
-
-			create_inode(file_inode_no, EXT2_FT_REG_FILE);
-
+			//file doesn't exist
+		    int return_val = create_file(dest_path_file, EXT2_FT_REG_FILE, NULL);
+		    if (return_val) { //If the return value is not zero then an error occurred
+			   return return_val;
+		    }
+		    file_inode_no = path_walk(dest_path_file);
 		}
 		else
 		{
@@ -115,8 +103,10 @@ int main(int argc, char ** argv){
 			file_inode->i_blocks = 0;
 		}
 		//allocate blocks and copy data
+		memset(buf, 0, sizeof(buf));
 		while (fread(buf, 1, EXT2_BLOCK_SIZE, file) > 0) {
-			write_file(buf, file_inode_no);
+			write_file(buf, file_inode_no-1);
+			memset(buf, 0, sizeof(buf));
 		}
 
 		fclose(file);
@@ -140,22 +130,7 @@ int write_file(char *buf, int inode_no) {
 
 
 
-
-	// for (int i = 0; i < (sb->s_blocks_count)/(sizeof(unsigned char) * 8); i++) {
-	//
-	//
-  //   /* Looping through each bit a byte. */
-  //   for (int k = 0; k < 8; k++) {
-  //     if (!((block_bitmap[i] >> k) & 1)) {
-	// 			block_no = i*8 + k;
-	// 			inode_table[inode_no].i_block[0] = block_no;
-	// 		}
-	// 	}
-	// }
-
-
-
-	LOG(DEBUG_LEVEL0, "block ");
+	printf("block ");
 	block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (block_no == -ENOMEM) {
 		fprintf(stderr, "no space in the block bitmap\n");
@@ -164,6 +139,8 @@ int write_file(char *buf, int inode_no) {
 	take_spot(block_bitmap, block_no);
 	print_bitmap(b_bitmap_size, block_bitmap);
 
+	printf("size of buf %d\n", strlen(buf));
+	inode_table[inode_no].i_size += strlen(buf);
 	inode_table[inode_no].i_block[index] = block_no;
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
