@@ -287,7 +287,6 @@ int b_bitmap_size;
 //------------------------ OUR HELPER FUNCTIONS ------------------------//
 void init_datastructures();
 void open_image(unsigned char * virtual_disk);
-void save_image(unsigned char * virtual_disk);
 void close_image(unsigned char * virtual_disk);
 
 int path_walk(char * path);

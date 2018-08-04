@@ -111,7 +111,7 @@ void close_image(unsigned char * virtual_disk) {
 //Load Image FS in the memory
 void open_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
-	int fd = open((const char*)virtual_disk, O_RDWR);
+	int fd = open(virtual_disk, O_RDWR);
 
 	disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if(disk == MAP_FAILED) {
@@ -369,45 +369,44 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
  * If checking_free == 1, checks to see if the block contains a free spot
  * and returns that block number. Return -1 if no free blocks.
  */
-int check_entry(unsigned int * block, int block_idx, char * name, int checking_free){
-	int block_no = block[block_idx];
-	if (block_no != 0) {
+ int check_entry(unsigned int * block, int block_idx, char * name, int checking_free){
+ 	int block_no = block[block_idx];
+ 	if (block_no != 0) {
 
-		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-		//int inode_no = i_entry->inode;
-		int count = 0;
-		while (count < EXT2_BLOCK_SIZE) {
-			if (!checking_free) { //If we are not looking for a free spot
-				if (!strcmp(i_entry->name, name)) {
-					return i_entry->inode;
-				}
-			}
-			//inode_no = i_entry->inode;
-			count+= i_entry->rec_len;
-			if (count < EXT2_BLOCK_SIZE) {
-				i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
-			}
-		}
+ 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+ 		//int inode_no = i_entry->inode;
+ 		int count = 0;
+ 		while (count < EXT2_BLOCK_SIZE) {
+ 			if (!checking_free) { //If we are not looking for a free spot
+ 				if (!strcmp(i_entry->name, name)) {
+ 					return i_entry->inode;
+ 				}
+ 			}
+ 			//inode_no = i_entry->inode;
+ 			count+= i_entry->rec_len;
+ 			if (count < EXT2_BLOCK_SIZE) {
+ 				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
+ 			}
+ 		}
 
-		if (checking_free) {
-			int current_idx = count - i_entry->rec_len;
-			int current_size = sizeof(struct ext2_dir_entry_2) + i_entry->name_len;
-			int adding_size = sizeof(struct ext2_dir_entry_2) + strlen(name);
-			int new_rec_len = current_idx + current_size + adding_size;
+ 		if (checking_free) {
+ 			int current_idx = count - i_entry->rec_len;
+ 			int current_size = sizeof(struct ext2_dir_entry_2) + i_entry->name_len;
+ 			int adding_size = sizeof(struct ext2_dir_entry_2) + strlen(name);
+ 			int new_rec_len = current_idx + current_size + adding_size;
 
-			printf("curr_idx %d, curr_size %d, new_rec %d on block %d\n", current_idx, current_size, new_rec_len, block_no);
-			if (new_rec_len < EXT2_BLOCK_SIZE) {
-				i_entry->rec_len = current_size;
-				//i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + current_size;
-				//i_entry->rec_len = EXT2_BLOCK_SIZE - (current_idx + current_size);
-				return current_idx + current_size;
-			}
+ 			printf("curr_idx %d, curr_size %d, new_rec %d on block %d\n", current_idx, current_size, new_rec_len, block_no);
+ 			if (new_rec_len < EXT2_BLOCK_SIZE) {
+ 				i_entry->rec_len = current_size + 4 - (current_size % 4);
+ 				//i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + current_size;
+ 				//i_entry->rec_len = EXT2_BLOCK_SIZE - (current_idx + current_size);
+ 				return current_idx + i_entry->rec_len;
+ 			}
 
-		}
-	}
-	return -1;
-}
-
+ 		}
+ 	}
+ 	return -1;
+ }
 
 /*
  * Add a new file to the current block if there is space and returns the
@@ -453,16 +452,16 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 	return -1;
 }
 
+
 //---------------------- Operations to create a new file ---------------------//
 /*
  * Create a new file at the path 'path' with a file type 'file_type'
  */
 int create_file(char * path, int file_type, char * link_to) {
 	char file[EXT2_NAME_LEN];
-	//char dir[strlen(path)];
-	char dir[EXT2_PATH_LEN];
+	char dir[strlen(path)];
 	split_path(path, file, dir);
-	LOG("path: %s, file: %s, dir: %s\n", path, file, dir);
+	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
@@ -471,14 +470,14 @@ int create_file(char * path, int file_type, char * link_to) {
 
 	// Checks to see if the file already exists
 	unsigned int check_exist = check_directory(file, dir_inode_no, 0, &check_entry);
-	if (check_exist) {
+	if (check_exist != -1) {
 			fprintf(stderr, "File with the same name exists\n");
 			return EEXIST;
 	}
 
 	// add the inode to the dir_inode i_block and get the block_no
 	unsigned int block_no = check_directory(file, dir_inode_no, file_type, &add_entry);
-	if (!block_no) {
+	if (block_no == -1) {
 		fprintf(stderr, "Unable to create file\n");
 		return ENOENT;
 	}
@@ -487,40 +486,37 @@ int create_file(char * path, int file_type, char * link_to) {
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	int count = 0;
 	while(count < EXT2_BLOCK_SIZE) {
-		LOG("create entry count %d\n", count);
+		printf("create entry count %d\n", count);
 		count += i_entry -> rec_len;
-		i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + i_entry -> rec_len);
+		i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + i_entry -> rec_len);
 	}
 	int return_val = 0;
 	if (link_to == NULL) {
 		if (file_type == EXT2_FT_DIR){
-			LOG("directory\n");
+			printf("directory\n");
 			return_val = init_dir(block_no, dir_inode_no, file);
 		}
 
 		else if(file_type == EXT2_FT_REG_FILE) {
-			LOG("reg file\n");
+			printf("reg file\n");
 			return_val = init_reg(block_no, file);
 		}
 	} else {
-		LOG("link file\n");
+		printf("init link\n");
 		return_val = init_link(block_no, file, file_type, link_to);
 	}
 	// initialize the directory inode
 	return return_val;
 }
-
-
 /*
  * Create a new file at the block number 'block_no' with displacement bytes
  * where this entry corresponds to the inode with inode number 'inode_no'.
  * The name of the file is 'name' of file type 'file_type'
  */
-void init_entry(int block_no, int displacement, char * name, int file_type){
-
+void create_new_entry(int block_no, int inode_no, int displacement, char * name, int file_type){
+	//TRACE("%s\n", __func__);
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + displacement);
-	int count = 0;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
 	i_entry->rec_len = block_size - displacement; //is this correct????
@@ -528,8 +524,6 @@ void init_entry(int block_no, int displacement, char * name, int file_type){
 	printf("file with name %s is on block %d at index %d\n", name, block_no, displacement);
 
 	i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	count = 0;
-
 }
 
 /*
@@ -601,6 +595,8 @@ void str_cat(char * str, char * substring, int * index) {
 
 
 //---------------------------- Bitmap Operations -----------------------------//
+
+// MODIFIED
 /*
  * Searches the entire bitmap and returns the index of the bitmap with a free
  * spot. If no free spot is found return -ENOMEM
@@ -620,6 +616,7 @@ int search_bitmap(unsigned char * bitmap, int max) {
 	return -ENOMEM;
 }
 
+// MODIFIED
 /*
  * Update the bitmap, and set the bit at index 'index' to 1
  */
@@ -634,11 +631,14 @@ void take_spot(unsigned char * bitmap, int index) {
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
 	if (bitmap == inode_bitmap) {
 		descriptor->bg_free_inodes_count--;
+		sb->s_free_inodes_count--;
 	} else {
 		descriptor->bg_free_blocks_count--;
+		sb->s_free_blocks_count--;
 	}
 }
 
+// MODIFIED
 /*
  * Updates the bitmap and sets the bit ad index 'index' to 0
  */
@@ -649,8 +649,10 @@ void free_spot(unsigned char * bitmap, int index) {
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
 	if (bitmap == inode_bitmap) {
 		descriptor->bg_free_inodes_count++;
+		sb->s_free_inodes_count++;
 	} else {
 		descriptor->bg_free_blocks_count++;
+		sb->s_free_blocks_count++;
 	}
 }
 
@@ -690,32 +692,15 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 	i_entry->inode = new_inode_no;
-	// int count = 0;
-	// printf("checking block no %d for file %s\n", block_no, name);
-	// int check_inode_no = i_entry ->inode;
-
-	// while (count < EXT2_BLOCK_SIZE) {
-	// 	if(i_entry->rec_len != 0) {
-	// 		printf("rec_len %d\n", i_entry->rec_len);
-	// 	}
-	// 	if (!strcmp(i_entry->name, name)) {
-	// 		printf("found at displacement %d\n", count);
-	// 		i_entry->inode = new_inode_no;
-	// 		printf("rec_len %d\n", i_entry->rec_len);
-	// 		count = EXT2_BLOCK_SIZE;
-	// 	}
-	// 	count+= i_entry->rec_len;
-	// 	if (count < EXT2_BLOCK_SIZE) {
-	// 		i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + i_entry->rec_len;
-	// 	}
-	// }
 
 	struct ext2_inode * dir_inode = inode_table + (new_inode_no - 1);
 	dir_inode->i_mode = 0;
 	dir_inode->i_mode = dir_inode->i_mode | EXT2_S_IFDIR;
 	dir_inode->i_dtime = 0;
+	dir_inode->i_size = block_size; // HOW TO SET THE SIZE????
+	(dir_inode->i_links_count)++;
 	int new_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (new_block_no == -ENOMEM) {
 		fprintf(stderr, "no space in block bitmap\n");
@@ -731,9 +716,13 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	f_entry->rec_len = 12;
 	// Initializing the file '..'
 	init_entry(new_block_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
-
-	f_entry = (struct ext2_dir_entry_2 *)((size_t)f_entry + 12);
+	f_entry = (struct ext2_dir_entry_2 *)((unsigned int)f_entry + 12);
 	f_entry ->inode = parent_inode_no;
+
+
+	struct ext2_inode * parent_inode = inode_table + (parent_inode_no - 1);
+	parent_inode->i_links_count++;
+
 
 	descriptor->bg_used_dirs_count++;
 	return 0;
@@ -749,7 +738,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 
 	// If we are initializing a symbolic link
 	if (file_type == EXT2_FT_SYMLINK) {
@@ -765,26 +754,44 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 
 		struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 		char * link_path = (char *) (new_inode -> i_block);
-		if (strlen(link_to) > 60) {
+
+		//set name to absolute_path
+		char name[60];
+		int i = 0;
+		int pos = 0;
+		if (link_to[0] == '.') {
+			name[0] = '/';
+			name[1] = '\0';
+			pos = 1;
+			i = 2;
+			if (link_to[1] != '/') {
+				i = 1;
+			}
+		}
+		if (strlen(link_to) + pos - i > 60) {
+			fprintf(stderr, "Link path is too long. Cannot fit in i_blocks");
 			return ENAMETOOLONG;
 		}
-		strncpy(link_path, link_to, 60);
+		str_cat(name, link_to + i, &pos);
+		i_entry->file_type = EXT2_FT_SYMLINK;
+		//copy the name to the iblocks
+		new_inode->i_size += sizeof(name);
+		strncpy(link_path, name, 60);
 
 	} else {
 		int inode_no = path_walk(link_to);
 		if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
 			return inode_no * -1;
 		}
+		struct ext2_inode * link_inode = inode_table + (inode_no - 1);
+		(link_inode->i_links_count)++;
 		i_entry->inode = inode_no;
-		i_entry->file_type = EXT2_FT_SYMLINK;
+		i_entry->file_type = EXT2_FT_REG_FILE;
 	}
 	//i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 	return 0;
 }
-
-
-
 
 
 int init_reg(int block_no, char * name){
@@ -804,7 +811,7 @@ int init_reg(int block_no, char * name){
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 	return 0;
@@ -828,7 +835,7 @@ int find_entry(int block_no, char * name){
 		}
 		count+= i_entry->rec_len;
 		if (count < EXT2_BLOCK_SIZE) {
-			i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
+			i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
