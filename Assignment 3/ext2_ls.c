@@ -19,11 +19,11 @@ int main(int argc, char ** argv){
 	int check_all = 0;
 	//check if flag -a not specified
 	if (argc == 3) {
-		virtual_disk = argv[1];
+		virtual_disk = (unsigned char*)argv[1];
 		path = argv[2];
 	} else if (!strcmp(argv[2], "-a")){
 		check_all = 1;
-		virtual_disk = argv[1];
+		virtual_disk = (unsigned char*)argv[1];
 		path = argv[3];
 	} else {
 		fprintf(stderr, "unknown flag specified\n");
