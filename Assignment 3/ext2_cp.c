@@ -15,7 +15,7 @@ int main(int argc, char ** argv){
 		exit(ENOENT);
 	}
 
-	char * virtual_disk = argv[1];
+	unsigned char * virtual_disk = (unsigned char *)argv[1];
 	char * file_path = argv[2];
 	char * dir_path = argv[3];
 	char dest_path[EXT2_PATH_LEN];

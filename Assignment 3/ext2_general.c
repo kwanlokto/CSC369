@@ -111,7 +111,7 @@ void close_image(unsigned char * virtual_disk) {
 //Load Image FS in the memory
 void open_image(unsigned char * virtual_disk) {
 	//TRACE("%s\n", __func__);
-	int fd = open(virtual_disk, O_RDWR);
+	int fd = open((const char*)virtual_disk, O_RDWR);
 
 	disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if(disk == MAP_FAILED) {
@@ -385,7 +385,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			//inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
 			if (count < EXT2_BLOCK_SIZE) {
-				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
+				i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
 			}
 		}
 
@@ -489,7 +489,7 @@ int create_file(char * path, int file_type, char * link_to) {
 	while(count < EXT2_BLOCK_SIZE) {
 		LOG("create entry count %d\n", count);
 		count += i_entry -> rec_len;
-		i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + i_entry -> rec_len);
+		i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + i_entry -> rec_len);
 	}
 	int return_val = 0;
 	if (link_to == NULL) {
@@ -519,7 +519,7 @@ int create_file(char * path, int file_type, char * link_to) {
 void init_entry(int block_no, int displacement, char * name, int file_type){
 
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + displacement);
+	i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + displacement);
 	int count = 0;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
@@ -690,7 +690,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	// int count = 0;
 	// printf("checking block no %d for file %s\n", block_no, name);
@@ -732,7 +732,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// Initializing the file '..'
 	init_entry(new_block_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
 
-	f_entry = (struct ext2_dir_entry_2 *)((unsigned int)f_entry + 12);
+	f_entry = (struct ext2_dir_entry_2 *)((size_t)f_entry + 12);
 	f_entry ->inode = parent_inode_no;
 
 	descriptor->bg_used_dirs_count++;
@@ -749,7 +749,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
 
 	// If we are initializing a symbolic link
 	if (file_type == EXT2_FT_SYMLINK) {
@@ -804,7 +804,7 @@ int init_reg(int block_no, char * name){
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 	return 0;
@@ -828,7 +828,7 @@ int find_entry(int block_no, char * name){
 		}
 		count+= i_entry->rec_len;
 		if (count < EXT2_BLOCK_SIZE) {
-			i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
+			i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
