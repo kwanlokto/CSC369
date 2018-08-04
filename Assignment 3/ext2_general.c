@@ -30,7 +30,7 @@ FILE* fimg;
  * and http://www.nongnu.org/ext2-doc/ext2.html#S-LOG-BLOCK-SIZE
 */
 void init_datastructures() {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	sb = (struct ext2_super_block *)(disk + EXT2_BLOCK_SIZE);
 	block_size = EXT2_BLOCK_SIZE << (sb -> s_log_block_size);
 	descriptor = (struct ext2_group_desc *)(disk + EXT2_BLOCK_SIZE + block_size);
@@ -42,12 +42,12 @@ void init_datastructures() {
 	root_directory = (struct ext2_dir_entry_2*)(disk + inode_table[EXT2_ROOT_INO-1].i_block[0]* EXT2_BLOCK_SIZE);
 	i_bitmap_size = (sb->s_inodes_count)/(sizeof(unsigned char) * 8);
 	b_bitmap_size = (sb->s_blocks_count)/(sizeof(unsigned char) * 8);
-	LOG("inode_bitmap: ");
+	LOG(DEBUG_LEVEL0, "inode_bitmap: ");
 	print_bitmap(i_bitmap_size, inode_bitmap);
-	LOG("\n");
-	LOG("block_bitmap: ");
+	LOG(DEBUG_LEVEL0, "\n");
+	LOG(DEBUG_LEVEL0, "block_bitmap: ");
 	print_bitmap(b_bitmap_size, block_bitmap);
-	LOG("\n");
+	LOG(DEBUG_LEVEL0, "\n");
 }
 
 
@@ -55,7 +55,7 @@ void init_datastructures() {
 
 //Load Image FS in the memory
 void open_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	FILE* fd = fopen(virtual_disk, "r+b");
 	if (fd == 0)
 	{
@@ -81,7 +81,7 @@ void open_image(unsigned char * virtual_disk) {
 }
 
 void save_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	FILE* fd = fopen(virtual_disk, "w+b");
 	if (fd == 0)
 	{
@@ -102,7 +102,7 @@ void save_image(unsigned char * virtual_disk) {
 
 //Close FS image and Free FS memeory
 void close_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	free(disk);
 }
 
@@ -110,7 +110,7 @@ void close_image(unsigned char * virtual_disk) {
 #else
 //Load Image FS in the memory
 void open_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	int fd = open((const char*)virtual_disk, O_RDWR);
 
 	disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -121,12 +121,12 @@ void open_image(unsigned char * virtual_disk) {
 }
 
 void save_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 }
 
 //Close FS image and Free FS memeory
 void close_image(unsigned char * virtual_disk) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 
 }
 
@@ -139,7 +139,7 @@ void close_image(unsigned char * virtual_disk) {
  * Referenced from https://www.geeksforgeeks.org/how-to-split-a-string-in-cc-python-and-java/
 */
 int path_walk(char * path) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 
 	char path_c[EXT2_PATH_LEN];
 	strcpy(path_c, path);
@@ -188,7 +188,7 @@ int path_walk(char * path) {
  * Returns the inode_no number if found. Otherwise return 0
  */
 int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)(unsigned int *, int, char *, int)){
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
 	unsigned int * inode_block = inode->i_block;
 	unsigned int * current_block = inode_block;
@@ -215,7 +215,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			// Set the next variables
 			index++;
 			if (index == 12) {
-				LOG("Now gonna check 12th entry -- singly indirects \n");
+				LOG(DEBUG_LEVEL0, "Now gonna check 12th entry -- singly indirects \n");
 				current_block = find_singly_indirect(inode_block, index, &curr_index);
 				//curr_index = 0;
 			} else {
@@ -229,7 +229,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 			if (i == 256) { // If there are no more
 				index++;
 				i = 0;
-				LOG("Now gonna check 13th entry -- doubly indirects \n");
+				LOG(DEBUG_LEVEL0, "Now gonna check 13th entry -- doubly indirects \n");
 				curr_index = 0;
 				current_block = find_doubly_indirect(inode_block, index, i, &curr_index);
 			}
@@ -250,7 +250,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 				if (j == 256) {
 					j = 0;
 					index++;
-					LOG("Now gonna check 14th entry -- triply indirects \n");
+					LOG(DEBUG_LEVEL0, "Now gonna check 14th entry -- triply indirects \n");
 					curr_index = 0;
 					current_block = find_triply_indirect(inode_block, index, i, j, &curr_index);
 				}
@@ -291,7 +291,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * index){
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * singly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return singly_indirect;
@@ -305,7 +305,7 @@ unsigned int * find_singly_indirect(unsigned int * block, int block_no , int * i
  * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, int * index) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * doubly_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return find_singly_indirect(doubly_indirect, i, index);
@@ -319,7 +319,7 @@ unsigned int * find_doubly_indirect(unsigned int * block, int block_no , int i, 
 * if it is found. Otherwise return the block that is empty
  */
 unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, int j, int * index) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	if (block[block_no]) {
 		unsigned int * triply_indirect = (unsigned int *)(disk + block[block_no] * block_size);
 		return find_doubly_indirect(triply_indirect, i, j, index);
@@ -338,7 +338,7 @@ unsigned int * find_triply_indirect(unsigned int * block, int block_no , int i, 
  * Return -1 to indicate to the check_directory to keep printing all files
  */
 int print_file(unsigned int * block, int block_idx, char * null, int include_all) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	int block_no = block[block_idx];
 	if (block_no != 0) {
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
@@ -462,7 +462,7 @@ int create_file(char * path, int file_type, char * link_to) {
 	//char dir[strlen(path)];
 	char dir[EXT2_PATH_LEN];
 	split_path(path, file, dir);
-	LOG("path: %s, file: %s, dir: %s\n", path, file, dir);
+	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
@@ -487,23 +487,23 @@ int create_file(char * path, int file_type, char * link_to) {
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	int count = 0;
 	while(count < EXT2_BLOCK_SIZE) {
-		LOG("create entry count %d\n", count);
+		LOG(DEBUG_LEVEL0, "create entry count %d\n", count);
 		count += i_entry -> rec_len;
 		i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + i_entry -> rec_len);
 	}
 	int return_val = 0;
 	if (link_to == NULL) {
 		if (file_type == EXT2_FT_DIR){
-			LOG("directory\n");
+			LOG(DEBUG_LEVEL0, "directory\n");
 			return_val = init_dir(block_no, dir_inode_no, file);
 		}
 
 		else if(file_type == EXT2_FT_REG_FILE) {
-			LOG("reg file\n");
+			LOG(DEBUG_LEVEL0, "reg file\n");
 			return_val = init_reg(block_no, file);
 		}
 	} else {
-		LOG("link file\n");
+		LOG(DEBUG_LEVEL0, "link file\n");
 		return_val = init_link(block_no, file, file_type, link_to);
 	}
 	// initialize the directory inode
@@ -537,7 +537,7 @@ void init_entry(int block_no, int displacement, char * name, int file_type){
  */
 void create_inode(int new_inode_no){
 
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	// Reset all values to be the default
 	struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 	for (int i = 0; i < 15; i++) {
@@ -554,7 +554,7 @@ void create_inode(int new_inode_no){
  * Extracts the filename and dir from the path
  */
 void split_path(char * path, char * name, char * dir) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	int count = 0;
 	int name_idx = 0;
 	int dir_idx = 0;
@@ -587,7 +587,7 @@ void split_path(char * path, char * name, char * dir) {
  * Append the substring 'substring' to str
  */
 void str_cat(char * str, char * substring, int * index) {
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	int count = 0;
 	while (count < strlen(substring)) {
 		(str)[*index] = substring[count];
@@ -658,14 +658,14 @@ void free_spot(unsigned char * bitmap, int index) {
  * Prints out the bitmap
  */
 void print_bitmap(int bitmap_size, unsigned char * bitmap){
-	//TRACE("%s\n", __func__);
+	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	for (int i = 0; i < bitmap_size; i++) {
 
 			/* Looping through each bit a byte. */
 			for (int k = 0; k < 8; k++) {
-					LOG("%d", (bitmap[i] >> k) & 1);
+					LOG(DEBUG_LEVEL0, "%d", (bitmap[i] >> k) & 1);
 			}
-			LOG(" ");
+			LOG(DEBUG_LEVEL0, " ");
 	}
 }
 

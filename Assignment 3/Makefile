@@ -1,4 +1,4 @@
-FLAGS = -Wall -g -std=gnu99
+FLAGS = -Wall -g -std=gnu99 -DDEBUG_EN
 DEPENDENCIES = ext2.h
 
 all : ext2_rm ext2_ln ext2_mkdir ext2_cp ext2_ls
