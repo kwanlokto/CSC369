@@ -14,7 +14,7 @@ int main(int argc, char ** argv){
 	}
 
 	// ------------------------ convert the arguments -----------------------//
-	char * virtual_disk = NULL;
+	unsigned char * virtual_disk = NULL;
 	char * path = NULL;
 	int check_all = 0;
 	//check if flag -a not specified

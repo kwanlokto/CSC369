@@ -385,7 +385,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			//inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
 			if (count < EXT2_BLOCK_SIZE) {
-				i_entry = (void *)i_entry + i_entry->rec_len;
+				i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 			}
 		}
 
@@ -398,7 +398,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			printf("curr_idx %d, curr_size %d, new_rec %d on block %d\n", current_idx, current_size, new_rec_len, block_no);
 			if (new_rec_len < EXT2_BLOCK_SIZE) {
 				i_entry->rec_len = current_size;
-				//i_entry = (void *)i_entry + current_size;
+				//i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + current_size;
 				//i_entry->rec_len = EXT2_BLOCK_SIZE - (current_idx + current_size);
 				return current_idx + current_size;
 			}
@@ -459,7 +459,8 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
  */
 int create_file(char * path, int file_type, char * link_to) {
 	char file[EXT2_NAME_LEN];
-	char dir[strlen(path)];
+	//char dir[strlen(path)];
+	char dir[EXT2_PATH_LEN];
 	split_path(path, file, dir);
 	LOG("path: %s, file: %s, dir: %s\n", path, file, dir);
 
@@ -488,7 +489,7 @@ int create_file(char * path, int file_type, char * link_to) {
 	while(count < EXT2_BLOCK_SIZE) {
 		LOG("create entry count %d\n", count);
 		count += i_entry -> rec_len;
-		i_entry = (void *) i_entry + i_entry -> rec_len;
+		i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + i_entry -> rec_len);
 	}
 	int return_val = 0;
 	if (link_to == NULL) {
@@ -518,7 +519,7 @@ int create_file(char * path, int file_type, char * link_to) {
 void init_entry(int block_no, int displacement, char * name, int file_type){
 
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	i_entry = (void *)i_entry + displacement;
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + displacement);
 	int count = 0;
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
@@ -689,7 +690,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (void *) i_entry + idx;
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	// int count = 0;
 	// printf("checking block no %d for file %s\n", block_no, name);
@@ -707,7 +708,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// 	}
 	// 	count+= i_entry->rec_len;
 	// 	if (count < EXT2_BLOCK_SIZE) {
-	// 		i_entry = (void *)i_entry + i_entry->rec_len;
+	// 		i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + i_entry->rec_len;
 	// 	}
 	// }
 
@@ -731,7 +732,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// Initializing the file '..'
 	init_entry(new_block_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
 
-	f_entry = (void *)f_entry + 12;
+	f_entry = (struct ext2_dir_entry_2 *)((unsigned int)f_entry + 12);
 	f_entry ->inode = parent_inode_no;
 
 	descriptor->bg_used_dirs_count++;
@@ -748,7 +749,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (void *) i_entry + idx;
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 
 	// If we are initializing a symbolic link
 	if (file_type == EXT2_FT_SYMLINK) {
@@ -803,7 +804,7 @@ int init_reg(int block_no, char * name){
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (void *) i_entry + idx;
+	i_entry = (struct ext2_dir_entry_2 *)((unsigned int) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 	return 0;
@@ -827,7 +828,7 @@ int find_entry(int block_no, char * name){
 		}
 		count+= i_entry->rec_len;
 		if (count < EXT2_BLOCK_SIZE) {
-			i_entry = (void *)i_entry + i_entry->rec_len;
+			i_entry = (struct ext2_dir_entry_2 *)((unsigned int)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
