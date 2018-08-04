@@ -83,13 +83,22 @@ int main(int argc, char ** argv){
 		file_inode_no = path_walk(dest_path_file);
 		if (file_inode_no == -ENOENT || file_inode_no == -ENOTDIR) {
 				//file doesn't exist
-
+#if 0
 			file_inode_no = check_directory(dest_file, dir_inode_no, EXT2_FT_REG_FILE, &add_entry);
 			if (!file_inode_no) {
 				fprintf(stderr, "Error: Unable to create file\n");
 				ret=-ENOENT;
 				goto adr_exit;
 			}
+#endif
+			file_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
+			if (file_inode_no == -ENOMEM) {
+				fprintf(stderr, "no space in the inode bitmap\n");
+				return -ENOMEM;
+			}
+			take_spot(inode_bitmap, file_inode_no);
+
+			create_inode(file_inode_no, EXT2_FT_REG_FILE);
 
 		}
 		else

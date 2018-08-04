@@ -155,7 +155,8 @@ int path_walk(char * path) {
 		name_idx = 0;
 		is_dir = false;
 		if (path_idx == 0 && path_c[path_idx] == '/') {
-			path_idx++;
+			name[0] = '.';
+			name_idx++;
 		}
 		while(path_idx < strlen(path_c) && path_c[path_idx] != '/') {
 			name[name_idx] = path_c[path_idx];
@@ -167,7 +168,7 @@ int path_walk(char * path) {
 		}
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
-		if (!inode_no) {
+		if (inode_no == -1) {
 			//fprintf(stderr, "Path does not exist\n");
 			return -ENOENT;
 		}
@@ -283,7 +284,7 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 		}
 
 	}
-	return 0;
+	return -1;
 }
 
 /*
@@ -354,7 +355,7 @@ int print_file(unsigned int * block, int block_idx, char * null, int include_all
 			}
 			inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
-			i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
+			i_entry = (struct ext2_dir_entry_2 *)((char*)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
@@ -385,7 +386,7 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 			//inode_no = i_entry->inode;
 			count+= i_entry->rec_len;
 			if (count < EXT2_BLOCK_SIZE) {
-				i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
+				i_entry = (struct ext2_dir_entry_2 *)((char*)i_entry + i_entry->rec_len);
 			}
 		}
 
@@ -397,10 +398,10 @@ int check_entry(unsigned int * block, int block_idx, char * name, int checking_f
 
 			printf("curr_idx %d, curr_size %d, new_rec %d on block %d\n", current_idx, current_size, new_rec_len, block_no);
 			if (new_rec_len < EXT2_BLOCK_SIZE) {
-				i_entry->rec_len = current_size;
-				//i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + current_size;
+				i_entry->rec_len = current_size + 4 - (current_size % 4);
+				//i_entry = (struct ext2_dir_entry_2)((char*))i_entry + current_size;
 				//i_entry->rec_len = EXT2_BLOCK_SIZE - (current_idx + current_size);
-				return current_idx + current_size;
+				return current_idx + i_entry->rec_len;
 			}
 
 		}
@@ -471,14 +472,14 @@ int create_file(char * path, int file_type, char * link_to) {
 
 	// Checks to see if the file already exists
 	unsigned int check_exist = check_directory(file, dir_inode_no, 0, &check_entry);
-	if (check_exist) {
+	if (check_exist != -1) {
 			fprintf(stderr, "File with the same name exists\n");
 			return EEXIST;
 	}
 
 	// add the inode to the dir_inode i_block and get the block_no
 	unsigned int block_no = check_directory(file, dir_inode_no, file_type, &add_entry);
-	if (!block_no) {
+	if (block_no == -1) {
 		fprintf(stderr, "Unable to create file\n");
 		return ENOENT;
 	}
@@ -489,7 +490,7 @@ int create_file(char * path, int file_type, char * link_to) {
 	while(count < EXT2_BLOCK_SIZE) {
 		LOG(DEBUG_LEVEL0, "create entry count %d\n", count);
 		count += i_entry -> rec_len;
-		i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + i_entry -> rec_len);
+		i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + i_entry -> rec_len);
 	}
 	int return_val = 0;
 	if (link_to == NULL) {
@@ -519,8 +520,7 @@ int create_file(char * path, int file_type, char * link_to) {
 void init_entry(int block_no, int displacement, char * name, int file_type){
 
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + displacement);
-	int count = 0;
+	i_entry = (struct ext2_dir_entry_2 *)((char*)i_entry + displacement);
 	i_entry->name_len = strlen(name);
 	i_entry->file_type = file_type;
 	i_entry->rec_len = block_size - displacement; //is this correct????
@@ -528,8 +528,6 @@ void init_entry(int block_no, int displacement, char * name, int file_type){
 	printf("file with name %s is on block %d at index %d\n", name, block_no, displacement);
 
 	i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	count = 0;
-
 }
 
 /*
@@ -634,8 +632,10 @@ void take_spot(unsigned char * bitmap, int index) {
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
 	if (bitmap == inode_bitmap) {
 		descriptor->bg_free_inodes_count--;
+		sb->s_free_inodes_count--;
 	} else {
 		descriptor->bg_free_blocks_count--;
+		sb->s_free_blocks_count--;
 	}
 }
 
@@ -649,8 +649,10 @@ void free_spot(unsigned char * bitmap, int index) {
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
 	if (bitmap == inode_bitmap) {
 		descriptor->bg_free_inodes_count++;
+		sb->s_free_inodes_count++;
 	} else {
 		descriptor->bg_free_blocks_count++;
+		sb->s_free_blocks_count++;
 	}
 }
 
@@ -690,7 +692,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	// int count = 0;
 	// printf("checking block no %d for file %s\n", block_no, name);
@@ -708,7 +710,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// 	}
 	// 	count+= i_entry->rec_len;
 	// 	if (count < EXT2_BLOCK_SIZE) {
-	// 		i_entry = (struct ext2_dir_entry_2)((unsigned int))i_entry + i_entry->rec_len;
+	// 		i_entry = (struct ext2_dir_entry_2)((char*))i_entry + i_entry->rec_len;
 	// 	}
 	// }
 
@@ -716,6 +718,8 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	dir_inode->i_mode = 0;
 	dir_inode->i_mode = dir_inode->i_mode | EXT2_S_IFDIR;
 	dir_inode->i_dtime = 0;
+	dir_inode->i_size = block_size; // HOW TO SET THE SIZE????
+	(dir_inode->i_links_count)++;
 	int new_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (new_block_no == -ENOMEM) {
 		fprintf(stderr, "no space in block bitmap\n");
@@ -732,8 +736,13 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// Initializing the file '..'
 	init_entry(new_block_no, sizeof(struct ext2_dir_entry_2) + 4, "..", EXT2_FT_DIR);
 
-	f_entry = (struct ext2_dir_entry_2 *)((size_t)f_entry + 12);
+	f_entry = (struct ext2_dir_entry_2 *)((char*)f_entry + 12);
 	f_entry ->inode = parent_inode_no;
+
+
+	struct ext2_inode * parent_inode = inode_table + (parent_inode_no - 1);
+	parent_inode->i_links_count++;
+
 
 	descriptor->bg_used_dirs_count++;
 	return 0;
@@ -749,7 +758,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 
 	// If we are initializing a symbolic link
 	if (file_type == EXT2_FT_SYMLINK) {
@@ -765,18 +774,39 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 
 		struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 		char * link_path = (char *) (new_inode -> i_block);
-		if (strlen(link_to) > 60) {
+
+		//set name to absolute_path
+		char name[60];
+		int i = 0;
+		int pos = 0;
+		if (link_to[0] == '.') {
+			name[0] = '/';
+			name[1] = '\0';
+			pos = 1;
+			i = 2;
+			if (link_to[1] != '/') {
+				i = 1;
+			}
+		}
+		if (strlen(link_to) + pos - i > 60) {
+			fprintf(stderr, "Link path is too long. Cannot fit in i_blocks");
 			return ENAMETOOLONG;
 		}
-		strncpy(link_path, link_to, 60);
+		str_cat(name, link_to + i, &pos);
+		i_entry->file_type = EXT2_FT_SYMLINK;
+		//copy the name to the iblocks
+		new_inode->i_size += sizeof(name);
+		strncpy(link_path, name, 60);
 
 	} else {
 		int inode_no = path_walk(link_to);
 		if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
 			return inode_no * -1;
 		}
+		struct ext2_inode * link_inode = inode_table + (inode_no - 1);
+		(link_inode->i_links_count)++;
 		i_entry->inode = inode_no;
-		i_entry->file_type = EXT2_FT_SYMLINK;
+		i_entry->file_type = EXT2_FT_REG_FILE;
 	}
 	//i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
@@ -804,7 +834,7 @@ int init_reg(int block_no, char * name){
 		fprintf(stderr, "could not find entry\n Should not be here!! \n");
 		exit(1);
 	}
-	i_entry = (struct ext2_dir_entry_2 *)((size_t) i_entry + idx);
+	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 	i_entry->inode = new_inode_no;
 	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
 	return 0;
@@ -828,8 +858,15 @@ int find_entry(int block_no, char * name){
 		}
 		count+= i_entry->rec_len;
 		if (count < EXT2_BLOCK_SIZE) {
-			i_entry = (struct ext2_dir_entry_2 *)((size_t)i_entry + i_entry->rec_len);
+			i_entry = (struct ext2_dir_entry_2 *)((char*)i_entry + i_entry->rec_len);
 		}
 	}
 	return -1;
+}
+
+
+int add_entry_in_directory(struct ext2_inode * dir_inode, unsigned int new_inode, char* entry_name, int entry_type)
+{
+
+
 }
