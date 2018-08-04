@@ -54,12 +54,12 @@ int delete_file(char * path, int rm_dir){
 	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	unsigned int file_inode_no = path_walk(path);
-	if (file_inode_no == -ENOENT || file_inode_no == -ENOTDIR) {
+	if (file_inode_no == -ENOENT) {
 		return file_inode_no * -1;
 	}
 
 	unsigned int dir_inode_no = path_walk(dir);
-	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
+	if (dir_inode_no == -ENOENT) {
 		return dir_inode_no * -1;
 	}
 

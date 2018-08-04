@@ -34,7 +34,7 @@ int main(int argc, char ** argv){
 
 	//-------------------------- go to the paths inode -------------------------//
 	int inode_no = path_walk(path);
-	if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
+	if (inode_no == -ENOENT) {
 		return inode_no * -1;
 	}
 

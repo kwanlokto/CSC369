@@ -35,7 +35,10 @@ int main(int argc, char ** argv){
 		return ENOENT;
 	}
 
-
+	if (link_path[strlen(link_path) - 1] == '/') {
+		fprintf(stderr, "Cannot create directory link\n");
+		return EISDIR;
+	}
 
 
 	//----------------------------- open the image -----------------------------//
@@ -47,24 +50,4 @@ int main(int argc, char ** argv){
 	//---------------------- create the symbolic link file ---------------------//
 
 	return create_file(link_path, file_type, file_path);
-	// if(create_link != 0) {
-	// 	return create_link;
-	// }
-	// printf("file\n");
-	// //--------------------- go to the link file inode -----------------//
-	// int link_inode_no;
-	// if (!(link_inode_no = path_walk(link_path))) {
-	// 	//fprintf(stderr, "Link path does not exist\n");
-	// 	return link_inode_no;
-	// }
-	// printf("file\n")
-	// //----------------------- go to the regular file inode ---------------------//
-	// int file_inode_no;
-	// if (!(file_inode_no = path_walk(file_path))) {
-	// 	//fprintf(stderr, "File path does not exist\n");
-	// 	return file_inode_no;
-	// }
-	//
-	// //---------------------------- initialize the link -------------------------//
-
 }
