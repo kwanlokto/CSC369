@@ -335,3 +335,4 @@ int init_link(int block_no, char * name, int file_type, char * link_to);
 int init_reg(int block_no, char * name);
 
 int find_entry(int block_no, char * name);
+void set_i_blocks(int dir_inode_no);

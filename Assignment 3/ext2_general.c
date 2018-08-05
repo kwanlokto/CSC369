@@ -175,7 +175,7 @@ int path_walk(char * path) {
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
 			//fprintf(stderr, "That is not a directory\n");
-			return -ENOTDIR;
+			return -ENOENT;
 		}
 		path_idx++;
 	}
@@ -473,7 +473,7 @@ int create_file(char * path, int file_type, char * link_to) {
 	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	int dir_inode_no = path_walk(dir);
-	if (dir_inode_no == -ENOENT || dir_inode_no == -ENOTDIR) {
+	if (dir_inode_no == -ENOENT) {
 		return dir_inode_no * -1;
 	}
 
@@ -488,9 +488,10 @@ int create_file(char * path, int file_type, char * link_to) {
 	unsigned int block_no = check_directory(file, dir_inode_no, file_type, &add_entry);
 	if (block_no == -1) {
 		fprintf(stderr, "Unable to create file\n");
-		return ENOENT;
+		return EINVAL;
 	}
 
+	set_i_blocks(dir_inode_no);
 
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	int count = 0;
@@ -525,13 +526,13 @@ void init_entry(int block_no, int displacement, char * name, int file_type){
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	i_entry = (struct ext2_dir_entry_2 *)((char*)i_entry + displacement);
 	i_entry->name_len = strlen(name);
-//	while(i_entry->name_len > 0 && name[i_entry->name_len - 1] != '.') {
-//		i_entry->name_len--;
-//	}
-
-	if(i_entry->name_len == 0) {
-		i_entry->name_len = strlen(name);
-	}
+	// while(i_entry->name_len > 0 && name[i_entry->name_len - 1] != '.') {
+	// 	i_entry->name_len--;
+	// }
+	//
+	// if(i_entry->name_len == 0) {
+	// 	i_entry->name_len = strlen(name);
+	// }
 
 	i_entry->file_type = file_type;
 	i_entry->rec_len = block_size - displacement; //is this correct????
@@ -710,6 +711,7 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	dir_inode->i_mode = dir_inode->i_mode | EXT2_S_IFDIR;
 	dir_inode->i_dtime = 0;
 	dir_inode->i_size = block_size; // HOW TO SET THE SIZE????
+	dir_inode->i_blocks = 2;
 	(dir_inode->i_links_count)++;
 	int new_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (new_block_no == -ENOMEM) {
@@ -751,6 +753,17 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 	}
 	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 
+
+	// Chek to see if the link to refers to a directory
+	int inode_no = path_walk(link_to);
+	if (inode_no == -ENOENT) {
+		return inode_no * -1;
+	}
+	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
+		fprintf(stderr, "Cannot link to a directory");
+		return EISDIR;
+	}
+
 	// If we are initializing a symbolic link
 	if (file_type == EXT2_FT_SYMLINK) {
 		// Creates the inode for this directory
@@ -762,38 +775,42 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		take_spot(inode_bitmap, new_inode_no);
 		create_inode(new_inode_no);
 		i_entry->inode = new_inode_no;
+		i_entry->file_type = EXT2_FT_SYMLINK;
 
 		struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
-		char * link_path = (char *) (new_inode -> i_block);
 
 		//set name to absolute_path
 		char name[60];
 		int i = 0;
-		int pos = 0;
-		if (link_to[0] == '.') {
-			name[0] = '/';
-			name[1] = '\0';
-			pos = 1;
+		int pos = 1;
+		if (link_to[0] == '.' && link_to[1] == '/') {
+			pos = 2;
 			i = 2;
-			if (link_to[1] != '/') {
-				i = 1;
-			}
 		}
+
+		// Create the new block
+		int block_no = search_bitmap(block_bitmap, b_bitmap_size);
+		if (block_no == -ENOMEM) {
+			fprintf(stderr, "no space in block bitmap\n");
+			exit(1);
+		}
+		take_spot(block_bitmap, block_no);
+
 		if (strlen(link_to) + pos - i > 60) {
 			fprintf(stderr, "Link path is too long. Cannot fit in i_blocks");
 			return ENAMETOOLONG;
 		}
+		name[0] = '/';
 		str_cat(name, link_to + i, &pos);
-		i_entry->file_type = EXT2_FT_SYMLINK;
-		//copy the name to the iblocks
-		new_inode->i_size += sizeof(name);
-		strncpy(link_path, name, 60);
 
+		(new_inode->i_block)[0] = block_no;
+		new_inode->i_size = strlen(name);
+		new_inode->i_mode = new_inode->i_mode | EXT2_S_IFLNK;
+		new_inode->i_blocks = 2;
+		strncpy((char *) (disk + block_no * block_size), name, strlen(name));
+		LOG(DEBUG_LEVEL0, "abs path of symb link %s\n", (char *) (disk + block_no * block_size));
 	} else {
-		int inode_no = path_walk(link_to);
-		if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
-			return inode_no * -1;
-		}
+
 		struct ext2_inode * link_inode = inode_table + (inode_no - 1);
 		(link_inode->i_links_count)++;
 		i_entry->inode = inode_no;
@@ -848,4 +865,62 @@ int find_entry(int block_no, char * name){
 		}
 	}
 	return -1;
+}
+
+
+
+void set_i_blocks(int dir_inode_no) {
+	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
+	unsigned int * dir_i_block = dir_inode -> i_block;
+	dir_inode->i_blocks = 0;
+	for (int i = 0; i < 12; i++) {
+		if (dir_i_block[i]) {
+			(dir_inode->i_blocks)++;
+		}
+	}
+
+	unsigned int * singly_indirect = (unsigned int *) disk + dir_i_block[12] * block_size;
+	if (singly_indirect) {
+		for (int i = 0; i < 256; i++) {
+			if (singly_indirect[i]) {
+				(dir_inode->i_blocks)++;
+			}
+		}
+	}
+
+	unsigned int * doubly_indirect = (unsigned int *) disk + dir_i_block[13] * block_size;
+	if (doubly_indirect) {
+		for (int i = 0; i < 256; i++) {
+			singly_indirect = (unsigned int *) disk + doubly_indirect[i] * block_size;
+			if (doubly_indirect[i]) {
+				for (int j = 0; j < 256; j++) {
+					if (singly_indirect[j]) {
+						(dir_inode->i_blocks)++;
+					}
+				}
+			}
+		}
+	}
+
+
+	unsigned int * triply_indirect = (unsigned int *) disk + dir_i_block[14] * block_size;
+	if(triply_indirect){
+		for (int i = 0; i < 256; i++) {
+			doubly_indirect = (unsigned int *) disk + triply_indirect[i] * block_size;
+			if (triply_indirect[i]) {
+				for (int j = 0; j < 256; j++) {
+					singly_indirect = (unsigned int *) disk + doubly_indirect[j] * block_size;
+					if (doubly_indirect[j]) {
+						for (int k = 0; k < 256; k++) {
+							if (singly_indirect[k]) {
+								(dir_inode->i_blocks)++;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	(dir_inode->i_blocks) = (dir_inode->i_blocks) * 2;
 }
