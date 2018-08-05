@@ -49,7 +49,7 @@ int main(int argc, char ** argv){
 
 int delete_file(char * path, int rm_dir){
 	char file[EXT2_NAME_LEN];
-	char dir[EXT2_PATH_LEN];
+	char dir[EXT2_PATH_LEN] = "/";
 	split_path(path, file, dir);
 	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
