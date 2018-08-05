@@ -59,10 +59,11 @@ int delete_file(char * path, int rm_dir){
 	}
 
 	struct ext2_inode * rm_inode = (struct ext2_inode *) inode_table + (file_inode_no - 1);
-	// if ((rm_dir == 0) && (rm_inode->i_mode & EXT2_S_IFDIR))
-	// {
-	// 	fprintf(stderr, "Error: File is a directory. Use -r to remove directory\n");
-	// }
+	if ((rm_dir == 0) && (rm_inode->i_mode & EXT2_S_IFDIR))
+	{
+		fprintf(stderr, "Error: File is a directory. Use -r to remove directory\n");
+		return EISDIR;
+	}
 
 	unsigned int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
@@ -73,7 +74,7 @@ int delete_file(char * path, int rm_dir){
 	if(rm_dir) {
 		struct ext2_inode * file_to_rm_inode = inode_table + (file_inode_no - 1);
 		if (!(file_to_rm_inode->i_mode & EXT2_S_IFDIR)) {
-			fprintf(stderr, "Not a directory\n");
+			fprintf(stderr, "Error: File not a directory\n");
 			return ENOTDIR;
 		}
 		recursive_rm(file_inode_no); //Remove the all subdirectories
@@ -86,7 +87,7 @@ int delete_file(char * path, int rm_dir){
 	rm_inode->i_size = 0;
 
 	LOG(DEBUG_LEVEL0, "before removing\n");
-	int return_val = check_directory(file, dir_inode_no, rm_dir, &rm_entry_from_block);
+	int return_val = check_directory(file, dir_inode_no, 0, &rm_entry_from_block);
 	if (return_val == -1) {
 		fprintf(stderr, "File not found\n");
 		return ENOENT;
@@ -166,7 +167,7 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
 					return r_value;
 				}
 			}
-			check_directory(name, dir_inode_no, 2, &rm_entry_from_block);
+			check_directory(name, dir_inode_no, 0, &rm_entry_from_block);
 			free_spot(inode_bitmap, check_inode_no);
 		}
 	}
@@ -198,10 +199,6 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 
 /*
  * Removes the entry with the same name as name
- * rm_dir is a boolean indicating whether or not we are removing directories
- *	0: rm file
- *	1: rm dir
- *	2: rm file/dir
  */
 int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm_dir) {
 	//static int prev_block_no = 0;
@@ -221,14 +218,6 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 			char * curr_name = get_name(i_entry->name, i_entry->name_len);
 			LOG(DEBUG_LEVEL0, "curr_name %s vs %s\n", curr_name, name);
 			if (!strcmp(curr_name, name)) {
-				if (rm_dir == 1 && i_entry->file_type != EXT2_FT_DIR) {
-					fprintf(stderr, "Error: %s is not a directory\n", name);
-					exit(ENOTDIR);
-				}
-				else if (rm_dir == 0 && i_entry->file_type == EXT2_FT_DIR) {
-					fprintf(stderr, "Error: %s is not a regular file\n", name);
-					exit(1); // WHAT TO RETURN???
-				}
 				idx = prev_count;
 				LOG(DEBUG_LEVEL0, "found entry wtih name %s at idx %d \n", name, idx);
 				new_rec_len = (count - prev_count) + i_entry->rec_len;
