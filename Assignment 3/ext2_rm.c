@@ -114,6 +114,8 @@ int recursive_rm(int dir_inode_no){
 		if (r_value < 0){
 			return r_value;
 		}
+
+		free_spot(block_bitmap, dir_iblocks[i]);
 	}
 
 	unsigned int * singly_indirect_block = (unsigned int *)(disk + dir_iblocks[12] * block_size);
@@ -123,7 +125,9 @@ int recursive_rm(int dir_inode_no){
 			if (r_value < 0){
 				return r_value;
 			}
+			free_spot(block_bitmap, singly_indirect_block[i]);
 		}
+		free_spot(block_bitmap, dir_iblocks[12]);
 	}
 
 	unsigned int * doubly_indirect_block = (unsigned int *)(disk + dir_iblocks[13] * block_size);
@@ -137,9 +141,12 @@ int recursive_rm(int dir_inode_no){
 					if (r_value < 0){
 						return r_value;
 					}
+					free_spot(block_bitmap, singly_indirect_block[j]);
 				}
+				free_spot(block_bitmap, doubly_indirect_block[i]);
 			}
 		}
+		free_spot(block_bitmap, dir_iblocks[13]);
 	}
 
 	unsigned int * triply_indirect_block = (unsigned int *)(disk + dir_iblocks[14] * block_size);
@@ -157,11 +164,15 @@ int recursive_rm(int dir_inode_no){
 							if (r_value < 0){
 								return r_value;
 							}
+							free_spot(block_bitmap, singly_indirect_block[k]);
 						}
+						free_spot(block_bitmap, doubly_indirect_block[j]);
 					}
 				}
+				free_spot(block_bitmap, triple_indirect_block[i]);
 			}
 		}
+		free_spot(block_bitmap, dir_iblocks[14]);
 	}
 	return 0;
 }
