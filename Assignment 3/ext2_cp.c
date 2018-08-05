@@ -5,7 +5,7 @@ ext2_cp: This program takes three command line arguments. The first is the name 
 #include "ext2.h"
 
 int write_file(char *buf, int inode_no);
-
+void allocate_indirect_space(unsigned int * indirect, int index);
 
 int main(int argc, char ** argv){
 	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
@@ -81,7 +81,7 @@ int main(int argc, char ** argv){
 
 		unsigned int file_inode_no;
 		file_inode_no = path_walk(dest_path_file);
-		if (file_inode_no == -ENOENT || file_inode_no == -ENOTDIR) {
+		if (file_inode_no == -ENOENT) {
 			//file doesn't exist
 		    int return_val = create_file(dest_path_file, EXT2_FT_REG_FILE, NULL);
 		    if (return_val) { //If the return value is not zero then an error occurred
@@ -149,10 +149,87 @@ int write_file(char *buf, int inode_no) {
 		inode->i_blocks += 2;
 		(inode->i_block)[index] = block_no;
 	}
+	else if (index < 15){
+		if (!(inode->i_block)[index]) {
+			allocate_indirect_space(inode->i_block, index);
+			inode->i_blocks += 2;
+		}
 
+		unsigned int * indirect_1 = (unsigned int *)(disk + (inode->i_block)[index] * block_size);
+
+		if (index == 12){ //SINGLY
+			indirect_1[i] = block_no;
+			i++;
+			if (i == 256) {
+				i = 0;
+				index++;
+			}
+		}
+
+		else { //GREATER THAN SINGLY
+			if (indirect_1[i]) {
+				allocate_indirect_space(indirect_1, i);
+				inode->i_blocks += 2;
+			}
+			unsigned int * indirect_2 = (unsigned int *)(disk + indirect_1[i] * block_size);
+
+			if (index == 13) { //DOUBLY
+				indirect_2[j] = block_no;
+				j++;
+				if (j == 256) {
+					j = 0;
+					i++;
+					if (i == 256) {
+						i = 0;
+						index++;
+					}
+				}
+			}
+
+			else {
+				if (indirect_2[j]) {
+					allocate_indirect_space(indirect_2, j);
+					inode->i_blocks += 2;
+				}
+				unsigned int * indirect_3 = (unsigned int *)(disk + indirect_2[j] * block_size);
+
+				indirect_3[k] = block_no;
+				k++;
+				if (k == 256) {
+					k = 0;
+					j++;
+					if (j == 256) {
+						j = 0;
+						i++;
+						if (i == 256) {
+							i = 0;
+							index++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	else {
+		fprintf(stderr, "Not enough space\n");
+		// NEED TO CLEAR THE IBLOCKS
+		return exit(ENOMEM);
+	}
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
 	index++;
 
 	return 0;
+}
+
+void allocate_indirect_space(unsigned int * indirect, int index){
+	int indirect_no = search_bitmap(block_bitmap, b_bitmap_size);
+	if (indirect_no == -ENOMEM) {
+		fprintf(stderr, "no space in the block bitmap\n");
+		exit(ENOMEM);
+	}
+	take_spot(block_bitmap, indirect_no);
+
+	indirect[index] = indirect_no;
 }
