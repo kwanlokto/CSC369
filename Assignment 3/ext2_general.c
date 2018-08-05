@@ -780,7 +780,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 
 		//set name to absolute_path
-		char name[60];
+		char name[EXT2_BLOCK_SIZE];
 		int i = 0;
 		int pos = 1;
 		if (link_to[0] == '.' && link_to[1] == '/') {
@@ -792,11 +792,11 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		int block_no = search_bitmap(block_bitmap, b_bitmap_size);
 		if (block_no == -ENOMEM) {
 			fprintf(stderr, "no space in block bitmap\n");
-			exit(1);
+			exit(ENOMEM);
 		}
 		take_spot(block_bitmap, block_no);
 
-		if (strlen(link_to) + pos - i > 60) {
+		if (strlen(link_to) + pos - i > EXT2_BLOCK_SIZE) {
 			fprintf(stderr, "Link path is too long. Cannot fit in i_blocks");
 			return ENAMETOOLONG;
 		}
