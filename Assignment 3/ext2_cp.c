@@ -125,6 +125,9 @@ adr_exit:
 
 int write_file(char *buf, int inode_no) {
 	static int index = 0;
+	static int i = 0;
+	static int j = 0;
+	static int k = 0;
 
 	int block_no;
 
@@ -211,7 +214,7 @@ int write_file(char *buf, int inode_no) {
 	else {
 		fprintf(stderr, "Not enough space\n");
 		// NEED TO CLEAR THE IBLOCKS
-		return exit(ENOMEM);
+		exit(ENOMEM);
 	}
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
