@@ -105,44 +105,60 @@ int delete_file(char * path, int rm_dir){
  * Returns 0 if sucessful and other values if unsucessful
  */
 int recursive_rm(int dir_inode_no){
+	printf("dir inode %d\n", dir_inode_no);
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 	unsigned int * dir_iblocks = dir_inode->i_block;
 	//int return_val = 0;
 	for (int i = 0; i < 12; i++) { //Direct blocks
 		int r_value = get_all_entries(dir_inode_no, dir_iblocks, i);
-		if (r_value){
+		if (r_value < 0){
 			return r_value;
 		}
 	}
 
 	unsigned int * singly_indirect_block = (unsigned int *)(disk + dir_iblocks[12] * block_size);
-	for (int i = 0; i < 256; i++) {
-		int r_value = get_all_entries(dir_inode_no, singly_indirect_block, i);
-		if (r_value){
-			return r_value;
-		}
-	}
-
-	unsigned int * doubly_indirect_block = (unsigned int *)(disk + dir_iblocks[13] * block_size);
-	for (int i = 0; i < 257; i++) {
-		singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[i] * block_size);
-		for (int j = 0; j < 257; j++) {
-			int r_value = get_all_entries(dir_inode_no, singly_indirect_block, j);
-			if (r_value){
+	if (dir_iblocks[12]) {
+		for (int i = 0; i < 256; i++) {
+			int r_value = get_all_entries(dir_inode_no, singly_indirect_block, i);
+			if (r_value < 0){
 				return r_value;
 			}
 		}
 	}
 
-	unsigned int * triply_indirect_block = (unsigned int *)(disk + dir_iblocks[13] * block_size);
-	for (int i = 0; i < 257; i++) {
-		doubly_indirect_block = (unsigned int *)(disk + triply_indirect_block[i] * block_size);
-		for (int j = 0; j < 257; j++) {
-			singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[j] * block_size);
-			for (int k = 0; k < 257; k++) {
-				int r_value = get_all_entries(dir_inode_no, singly_indirect_block, k);
-				if (r_value){
-					return r_value;
+	unsigned int * doubly_indirect_block = (unsigned int *)(disk + dir_iblocks[13] * block_size);
+	if (dir_iblocks[13]) {
+		for (int i = 0; i < 257; i++) {
+
+			singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[i] * block_size);
+			if (doubly_indirect_block[i]) {
+				for (int j = 0; j < 257; j++) {
+					int r_value = get_all_entries(dir_inode_no, singly_indirect_block, j);
+					if (r_value < 0){
+						return r_value;
+					}
+				}
+			}
+		}
+	}
+
+	unsigned int * triply_indirect_block = (unsigned int *)(disk + dir_iblocks[14] * block_size);
+	if (dir_iblocks[14]) {
+		for (int i = 0; i < 257; i++) {
+
+			doubly_indirect_block = (unsigned int *)(disk + triply_indirect_block[i] * block_size);
+			if (triply_indirect_block[i]) {
+				for (int j = 0; j < 257; j++) {
+
+					singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[j] * block_size);
+					if (doubly_indirect_block[j]) {
+						for (int k = 0; k < 257; k++) {
+							int r_value = get_all_entries(dir_inode_no, singly_indirect_block, k);
+							if (r_value < 0){
+								return r_value;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -158,17 +174,23 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
 	int check_idx = 0;
 	int check_inode_no;
 	char name[EXT2_NAME_LEN];
-	while ((check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name)) >= 0) {
-		if (check_inode_no != 0) {
-			struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
-			if(check_inode->i_mode & EXT2_S_IFDIR) {
-				r_value = recursive_rm(check_inode_no);
-				if(r_value < 0){ //If there is an error
-					return r_value;
-				}
+	if (dir_iblocks[idx]) {
+		while ((check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name)) >= 0) {
+			if (check_idx) {
+				printf("check_idx %d\n", check_idx);
 			}
-			check_directory(name, dir_inode_no, 0, &rm_entry_from_block);
-			free_spot(inode_bitmap, check_inode_no);
+			if (check_inode_no != 0) {
+				struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
+				if(check_inode->i_mode & EXT2_S_IFDIR) {
+					r_value = recursive_rm(check_inode_no);
+					if(r_value < 0){ //If there is an error
+						return r_value;
+					}
+					(descriptor->bg_used_dirs_count)--;
+				}
+				check_directory(name, dir_inode_no, 0, &rm_entry_from_block);
+				free_spot(inode_bitmap, check_inode_no);
+			}
 		}
 	}
 	return 0;
@@ -178,22 +200,29 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
  * Return the current entry's inode
  */
 int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name) {
+	int return_val = 0;
+	struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+	current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
 
-	if (block_no != 0) {
-		struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-		current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
+	if (current_entry->inode) {
 
-		if (current_entry->inode) {
-			//Set the next idx
-			*check_idx += current_entry->rec_len;
-			if(*check_idx >= EXT2_BLOCK_SIZE) {
-				*check_idx = 0;
-			}
-			strncpy(name, current_entry->name, EXT2_NAME_LEN);
+		strncpy(name, current_entry->name, current_entry->name_len);
+		name[current_entry->name_len] = '\0';
+
+		// If the entry is not the current and the previous
+		if (strcmp(name, ".") && strcmp(name, "..")) {
+			return_val = current_entry->inode;
 		}
-		return current_entry->inode;
 	}
-	return -1;
+
+	// Set the next index
+	*check_idx += current_entry->rec_len;
+	if(*check_idx >= EXT2_BLOCK_SIZE) {
+		*check_idx = 0;
+		return_val = -1;
+	}
+
+	return return_val;
 }
 
 
