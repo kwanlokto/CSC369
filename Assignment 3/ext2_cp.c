@@ -105,7 +105,7 @@ int main(int argc, char ** argv){
 		//allocate blocks and copy data
 		memset(buf, 0, sizeof(buf));
 		while (fread(buf, 1, EXT2_BLOCK_SIZE, file) > 0) {
-			write_file(buf, file_inode_no-1);
+			write_file(buf, file_inode_no);
 			memset(buf, 0, sizeof(buf));
 		}
 
@@ -125,10 +125,11 @@ adr_exit:
 
 int write_file(char *buf, int inode_no) {
 	static int index = 0;
+	static int i = 0;
+	static int j = 0;
+	static int k = 0;
 
 	int block_no;
-
-
 
 	LOG(DEBUG_LEVEL0, "block ");
 	block_no = search_bitmap(block_bitmap, b_bitmap_size);
@@ -140,8 +141,15 @@ int write_file(char *buf, int inode_no) {
 	print_bitmap(b_bitmap_size, block_bitmap);
 
 	LOG(DEBUG_LEVEL0, "size of buf %d\n", strlen(buf));
-	inode_table[inode_no].i_size += strlen(buf);
-	inode_table[inode_no].i_block[index] = block_no;
+
+	struct ext2_inode * inode = inode_table + (inode_no - 1);
+	inode->i_size += strlen(buf);
+
+	if (index < 12) { //Direct blocks
+		inode->i_blocks += 2;
+		(inode->i_block)[index] = block_no;
+	}
+
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
 	index++;
