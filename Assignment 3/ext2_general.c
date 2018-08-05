@@ -468,7 +468,7 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 int create_file(char * path, int file_type, char * link_to) {
 	char file[EXT2_NAME_LEN];
 	//char dir[strlen(path)];
-	char dir[EXT2_PATH_LEN];
+	char dir[EXT2_PATH_LEN] = "/";
 	split_path(path, file, dir);
 	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
