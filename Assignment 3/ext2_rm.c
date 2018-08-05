@@ -15,7 +15,7 @@ int main(int argc, char ** argv){
 
 
 	// ------------------------ convert the arguments -----------------------//
-	char * virtual_disk = NULL;
+	unsigned char* virtual_disk = NULL;
 	char * path = NULL;
 	int rm_dir = 0;
 	//check if flag -a not specified
@@ -44,18 +44,24 @@ int main(int argc, char ** argv){
 	//------------------------- set the inode to be free -----------------------//
 
 
-	return 0;
+	return return_val;
 }
 
 int delete_file(char * path, int rm_dir){
 	char file[EXT2_NAME_LEN];
-	char dir[strlen(path)];
+	char dir[EXT2_PATH_LEN];
 	split_path(path, file, dir);
-	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
+	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	unsigned int file_inode_no = path_walk(path);
 	if (file_inode_no == -ENOENT) {
 		return file_inode_no * -1;
+	}
+
+	struct ext2_inode * rm_inode = (struct ext2_inode *) inode_table + (file_inode_no - 1);
+	if ((rm_dir == 0) && (rm_inode->i_mode & EXT2_S_IFDIR))
+	{
+		fprintf(stderr, "Error: File is a directory. Use -r to remove directory\n");
 	}
 
 	unsigned int dir_inode_no = path_walk(dir);
@@ -64,11 +70,10 @@ int delete_file(char * path, int rm_dir){
 	}
 
 	// Clear the inode's attributes to be the default
-	struct ext2_inode * rm_inode = (struct ext2_inode *) inode_table + (file_inode_no - 1);
 	if(rm_dir) {
 		struct ext2_inode * file_to_rm_inode = inode_table + (file_inode_no - 1);
 		if (!(file_to_rm_inode->i_mode & EXT2_S_IFDIR)) {
-			fprintf(stderr, "Not a directory");
+			fprintf(stderr, "Not a directory\n");
 			return ENOTDIR;
 		}
 		recursive_rm(file_inode_no); //Remove the all subdirectories
@@ -80,13 +85,13 @@ int delete_file(char * path, int rm_dir){
 	rm_inode->i_dtime = 1; // whats the format????
 	rm_inode->i_size = 0;
 
-	printf("before removing\n");
+	LOG(DEBUG_LEVEL0, "before removing\n");
 	int return_val = check_directory(file, dir_inode_no, 0, &rm_entry_from_block);
 	if (return_val == -1) {
 		fprintf(stderr, "File not found\n");
 		return ENOENT;
 	}
-	printf("finish removing\n");
+	LOG(DEBUG_LEVEL0, "finish removing\n");
 
 	// Free the file from the bitmap
 	free_spot(inode_bitmap, file_inode_no);
@@ -175,7 +180,7 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 
 	if (block_no != 0) {
 		struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-		current_entry = (void *) current_entry + *check_idx;
+		current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
 
 		if (current_entry->inode) {
 			//Set the next idx
@@ -208,18 +213,18 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		while (count < EXT2_BLOCK_SIZE) {
 			// Check to see if we have found the corresponding entry
 			char * curr_name = get_name(i_entry->name, i_entry->name_len);
-			printf("curr_name %s vs %s\n", curr_name, name);
+			LOG(DEBUG_LEVEL0, "curr_name %s vs %s\n", curr_name, name);
 			if (!strcmp(curr_name, name)) {
 
 				idx = prev_count;
-				printf("found entry wtih name %s at idx %d \n", name, idx);
+				LOG(DEBUG_LEVEL0, "found entry wtih name %s at idx %d \n", name, idx);
 				new_rec_len = (count - prev_count) + i_entry->rec_len;
 				count = EXT2_BLOCK_SIZE;
 			}
 			else {
 				prev_count = count;
 				count+= i_entry->rec_len;
-				i_entry = (void *)i_entry + i_entry->rec_len;
+				i_entry = (struct ext2_dir_entry_2 *)((char *)i_entry + i_entry->rec_len);
 			}
 			free(curr_name);
 		}
@@ -228,9 +233,9 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		// If we are removing then entry at the start of the block
 		if (idx >= 0) {
 			struct ext2_dir_entry_2 * prev_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-			prev_entry = (void *)prev_entry + idx;
+			prev_entry = (struct ext2_dir_entry_2 *)((char *)prev_entry + idx);
 
-			struct ext2_dir_entry_2 * curr_entry = (void *)prev_entry + prev_entry->rec_len;
+			struct ext2_dir_entry_2 * curr_entry = (struct ext2_dir_entry_2 *)((char *)prev_entry + prev_entry->rec_len);
 			curr_entry->inode = 0;
 			curr_entry->name_len = 0;
 			prev_entry->rec_len = new_rec_len;
