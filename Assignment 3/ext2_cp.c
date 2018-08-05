@@ -125,9 +125,6 @@ adr_exit:
 
 int write_file(char *buf, int inode_no) {
 	static int index = 0;
-	static int i = 0;
-	static int j = 0;
-	static int k = 0;
 
 	int block_no;
 

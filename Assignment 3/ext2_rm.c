@@ -15,7 +15,7 @@ int main(int argc, char ** argv){
 
 
 	// ------------------------ convert the arguments -----------------------//
-	char * virtual_disk = NULL;
+	unsigned char* virtual_disk = NULL;
 	char * path = NULL;
 	int rm_dir = 0;
 	//check if flag -a not specified
@@ -44,7 +44,7 @@ int main(int argc, char ** argv){
 	//------------------------- set the inode to be free -----------------------//
 
 
-	return 0;
+	return return_val;
 }
 
 int delete_file(char * path, int rm_dir){
