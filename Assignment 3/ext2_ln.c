@@ -40,6 +40,16 @@ int main(int argc, char ** argv){
 		return EISDIR;
 	}
 
+	// Chek to see if the link to refers to a directory
+	int inode_no = path_walk(file_path);
+	if (inode_no == -ENOENT) {
+		return inode_no * -1;
+	}
+	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
+		fprintf(stderr, "Cannot link to a directory\n");
+		return EISDIR;
+	}
+
 
 	//----------------------------- open the image -----------------------------//
 	open_image(virtual_disk);

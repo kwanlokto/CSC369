@@ -760,7 +760,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		return inode_no * -1;
 	}
 	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
-		fprintf(stderr, "Cannot link to a directory");
+		fprintf(stderr, "Cannot link to a directory\n");
 		return EISDIR;
 	}
 

@@ -211,11 +211,11 @@ int write_file(char *buf, int inode_no) {
 		}
 	}
 
-	else {
-		fprintf(stderr, "Not enough space\n");
-		// NEED TO CLEAR THE IBLOCKS
-		exit(ENOMEM);
-	}
+	// else {
+	// 	fprintf(stderr, "Not enough space\n");
+	// 	// NEED TO CLEAR THE IBLOCKS
+	// 	exit(ENOMEM);
+	// }
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;
 	strncpy(modify, buf, EXT2_BLOCK_SIZE);
 	index++;
