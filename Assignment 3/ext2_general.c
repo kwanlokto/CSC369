@@ -657,13 +657,15 @@ void free_spot(unsigned char * bitmap, int index) {
 	index -= 1;
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
-	bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
-	if (bitmap == inode_bitmap) {
-		descriptor->bg_free_inodes_count++;
-		sb->s_free_inodes_count++;
-	} else {
-		descriptor->bg_free_blocks_count++;
-		sb->s_free_blocks_count++;
+	if (bitmap[bit_map_byte] & (1 << bit_order)) {
+		bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
+		if (bitmap == inode_bitmap) {
+			descriptor->bg_free_inodes_count++;
+			sb->s_free_inodes_count++;
+		} else {
+			descriptor->bg_free_blocks_count++;
+			sb->s_free_blocks_count++;
+		}
 	}
 }
 
