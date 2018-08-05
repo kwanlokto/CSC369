@@ -550,7 +550,9 @@ void create_inode(int new_inode_no){
 	// Reset all values to be the default
 	struct ext2_inode * new_inode = inode_table + (new_inode_no - 1);
 	for (int i = 0; i < 15; i++) {
-		free_spot(block_bitmap, (new_inode -> i_block)[i]);
+		if ((new_inode -> i_block)[i]) {
+			free_spot(block_bitmap, (new_inode -> i_block)[i]);
+		}
 		(new_inode -> i_block)[i] = 0;
 	}
 	new_inode->i_dtime = 0; // remove deletion time
@@ -657,7 +659,7 @@ void free_spot(unsigned char * bitmap, int index) {
 	index -= 1;
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
-	if (bitmap[bit_map_byte] & (1 << bit_order)) {
+	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
 		bitmap[bit_map_byte] = bitmap[bit_map_byte] | ~(1 << bit_order);
 		if (bitmap == inode_bitmap) {
 			descriptor->bg_free_inodes_count++;

@@ -35,6 +35,15 @@ int main(int argc, char ** argv){
 		return ENOENT;
 	}
 
+
+	//----------------------------- open the image -----------------------------//
+	open_image(virtual_disk);
+
+	//-------------------------- setup datastructures --------------------------//
+	init_datastructures();
+
+	//---------------------- create the symbolic link file ---------------------//
+
 	if (link_path[strlen(link_path) - 1] == '/') {
 		fprintf(stderr, "Cannot create directory link\n");
 		return EISDIR;
@@ -45,19 +54,11 @@ int main(int argc, char ** argv){
 	if (inode_no == -ENOENT) {
 		return inode_no * -1;
 	}
+
 	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
 		fprintf(stderr, "Cannot link to a directory\n");
 		return EISDIR;
 	}
-
-
-	//----------------------------- open the image -----------------------------//
-	open_image(virtual_disk);
-
-	//-------------------------- setup datastructures --------------------------//
-	init_datastructures();
-
-	//---------------------- create the symbolic link file ---------------------//
 
 	return create_file(link_path, file_type, file_path);
 }

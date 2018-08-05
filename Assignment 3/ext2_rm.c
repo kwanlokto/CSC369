@@ -169,7 +169,7 @@ int recursive_rm(int dir_inode_no){
 						free_spot(block_bitmap, doubly_indirect_block[j]);
 					}
 				}
-				free_spot(block_bitmap, triple_indirect_block[i]);
+				free_spot(block_bitmap, triply_indirect_block[i]);
 			}
 		}
 		free_spot(block_bitmap, dir_iblocks[14]);
