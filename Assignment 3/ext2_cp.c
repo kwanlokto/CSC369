@@ -130,7 +130,7 @@ int write_file(char *buf, int inode_no) {
 
 
 
-	printf("block ");
+	LOG(DEBUG_LEVEL0, "block ");
 	block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (block_no == -ENOMEM) {
 		fprintf(stderr, "no space in the block bitmap\n");
@@ -139,7 +139,7 @@ int write_file(char *buf, int inode_no) {
 	take_spot(block_bitmap, block_no);
 	print_bitmap(b_bitmap_size, block_bitmap);
 
-	printf("size of buf %d\n", strlen(buf));
+	LOG(DEBUG_LEVEL0, "size of buf %d\n", strlen(buf));
 	inode_table[inode_no].i_size += strlen(buf);
 	inode_table[inode_no].i_block[index] = block_no;
 	char * modify = (char *)disk + EXT2_BLOCK_SIZE * block_no;

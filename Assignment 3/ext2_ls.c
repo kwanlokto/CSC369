@@ -38,7 +38,7 @@ int main(int argc, char ** argv){
 
 	//---------------------------- go to the paths inode ----------------------//
 	int inode_no = path_walk(path);
-	if (inode_no == -ENOENT || inode_no == -ENOTDIR) {
+	if (inode_no == -ENOENT) {
 		return inode_no * -1;
 	}
 
@@ -51,7 +51,11 @@ int main(int argc, char ** argv){
 		printf("%s\n",name);
 		return 0;
 	}
-	check_directory(NULL, inode_no, check_all, &print_file);
+	int return_val = check_directory(NULL, inode_no, check_all, &print_file);
+	if (return_val != -1) {
+		fprintf(stderr, "Didn't print all files\n");
+		return ENOENT;
+	}
 	close_image(disk);
 	return 0;
 }

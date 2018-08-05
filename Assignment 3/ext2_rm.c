@@ -53,16 +53,14 @@ int delete_file(char * path, int rm_dir){
 	split_path(path, file, dir);
 	printf("path: %s, file: %s, dir: %s\n", path, file, dir);
 
-	unsigned int file_inode_no;
-	if (!(file_inode_no = path_walk(path))) {
-		fprintf(stderr, "Not a valid path\n");
-		return ENOENT;
+	unsigned int file_inode_no = path_walk(path);
+	if (file_inode_no == -ENOENT) {
+		return file_inode_no * -1;
 	}
 
-	unsigned int dir_inode_no;
-	if (!(dir_inode_no = path_walk(dir))) {
-		fprintf(stderr, "Not a valid path\n");
-		return ENOENT;
+	unsigned int dir_inode_no = path_walk(dir);
+	if (dir_inode_no == -ENOENT) {
+		return dir_inode_no * -1;
 	}
 
 	// Clear the inode's attributes to be the default
@@ -209,15 +207,21 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		//traverse to the entry with the same inode
 		while (count < EXT2_BLOCK_SIZE) {
 			// Check to see if we have found the corresponding entry
-			if (!strcmp(name, i_entry->name)) {
+			char * curr_name = get_name(i_entry->name, i_entry->name_len);
+			printf("curr_name %s vs %s\n", curr_name, name);
+			if (!strcmp(curr_name, name)) {
+
 				idx = prev_count;
+				printf("found entry wtih name %s at idx %d \n", name, idx);
 				new_rec_len = (count - prev_count) + i_entry->rec_len;
 				count = EXT2_BLOCK_SIZE;
-			} else {
+			}
+			else {
 				prev_count = count;
 				count+= i_entry->rec_len;
 				i_entry = (void *)i_entry + i_entry->rec_len;
 			}
+			free(curr_name);
 		}
 
 		// If the entry is found
@@ -230,7 +234,7 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 			curr_entry->inode = 0;
 			curr_entry->name_len = 0;
 			prev_entry->rec_len = new_rec_len;
-
+			return 0;
 		}
 		//prev_block_no = block_no;
 	}
