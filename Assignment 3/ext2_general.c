@@ -659,8 +659,8 @@ void take_spot(unsigned char * bitmap, int index) {
 }
 
 /*
- * Updates the bitmap and sets the bit ad index 'index' to 0
- */
+* Updates the bitmap and sets the bit ad index 'index' to 0
+*/
 void free_spot(unsigned char * bitmap, int index) {
 	index -= 1;
 	int bit_map_byte = index / 8;
@@ -670,7 +670,8 @@ void free_spot(unsigned char * bitmap, int index) {
 		if (bitmap == inode_bitmap) {
 			descriptor->bg_free_inodes_count++;
 			sb->s_free_inodes_count++;
-		} else {
+		}
+		else {
 			descriptor->bg_free_blocks_count++;
 			sb->s_free_blocks_count++;
 		}
