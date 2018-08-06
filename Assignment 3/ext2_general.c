@@ -166,6 +166,7 @@ int path_walk(char * path) {
 				is_dir = true;
 			}
 		}
+
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (inode_no == -1) {
@@ -177,7 +178,11 @@ int path_walk(char * path) {
 			fprintf(stderr, "That is not a directory\n");
 			return -ENOENT;
 		}
-		path_idx++;
+
+		//Set path_idx to be the next index in the name
+		while(path_idx < strlen(path_c) && path_c[path_idx] == '/') {
+			path_idx++;
+		}
 	}
 	return inode_no;
 }
