@@ -479,6 +479,7 @@ int create_file(char * path, int file_type, char * link_to) {
 
 	int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
+		fprintf(stderr, "Path does not exist\n");
 		return dir_inode_no * -1;
 	}
 

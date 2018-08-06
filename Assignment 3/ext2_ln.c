@@ -52,6 +52,7 @@ int main(int argc, char ** argv){
 	// Chek to see if the link to refers to a directory
 	int inode_no = path_walk(file_path);
 	if (inode_no == -ENOENT) {
+		fprintf(stderr, "Path does not exist\n");
 		return inode_no * -1;
 	}
 
