@@ -170,12 +170,12 @@ int path_walk(char * path) {
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (inode_no == -1) {
-			fprintf(stderr, "Path does not exist\n");
+			//fprintf(stderr, "Path does not exist\n");
 			return -ENOENT;
 		}
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
-			fprintf(stderr, "That is not a directory\n");
+			//fprintf(stderr, "That is not a directory\n");
 			return -ENOENT;
 		}
 
