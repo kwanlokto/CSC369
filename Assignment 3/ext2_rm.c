@@ -55,6 +55,7 @@ int delete_file(char * path, int rm_dir){
 
 	unsigned int file_inode_no = path_walk(path);
 	if (file_inode_no == -ENOENT) {
+		fprintf(stderr, "Path does not exist\n");
 		return file_inode_no * -1;
 	}
 
@@ -67,6 +68,7 @@ int delete_file(char * path, int rm_dir){
 
 	unsigned int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
+		fprintf(stderr, "Path does not exist\n");
 		return dir_inode_no * -1;
 	}
 
