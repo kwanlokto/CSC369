@@ -1,9 +1,12 @@
-FLAGS = -Wall -g -std=gnu99 
-#FLAGS+=-DDEBUG_EN
+FLAGS = -Wall -g -std=gnu99
+FLAGS+=-DDEBUG_EN
 
 DEPENDENCIES = ext2.h
 
-all : ext2_rm ext2_ln ext2_mkdir ext2_cp ext2_ls
+all : ext2_rm ext2_ln ext2_mkdir ext2_cp ext2_ls ext2_rm_bonus
+
+ext2_rm_bonus : ext2_rm_bonus.o ext2_general.o
+	gcc ${FLAGS} -o $@ $^ -lm
 
 ext2_rm : ext2_rm.o ext2_general.o
 	gcc ${FLAGS} -o $@ $^ -lm
