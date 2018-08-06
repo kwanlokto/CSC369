@@ -2,13 +2,15 @@
 
 extern unsigned char * disk;
 int rm_entry_from_block(unsigned int * block, int block_idx, char * null, int rm_inode);
+int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int idx);
 int delete_file(char * path, int rm_dir);
 int rm_inode(int dir_inode_no);
+int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name);
 
 int main(int argc, char ** argv){
-	if (argc != 3){
+	if (argc < 3 || argc > 4){
 		fprintf(stderr, "Error: Missing parameters. It requires 2 parameters\n");
-		fprintf(stderr, "Usage: ext2_rm <disk.img> <file_path>\n");
+		fprintf(stderr, "Usage: ext2_rm <disk.img> [-r] <file_path>\n");
 		return EINVAL;
 	}
 
@@ -16,10 +18,19 @@ int main(int argc, char ** argv){
 	// ------------------------ convert the arguments -----------------------//
 	unsigned char* virtual_disk = NULL;
 	char * path = NULL;
+	int rm_dir = 0;
 	//check if flag -a not specified
-	virtual_disk = argv[1];
-	path = argv[2];
-
+	if (argc == 3) {
+		virtual_disk = argv[1];
+		path = argv[2];
+	} else if (!strcmp(argv[2], "-r")){
+		rm_dir = 1;
+		virtual_disk = argv[1];
+		path = argv[3];
+	} else {
+		fprintf(stderr, "Error: Unknown flag specified");
+		return EINVAL;
+	}
 
 
 	//----------------------------- open the image -----------------------------//
@@ -29,7 +40,7 @@ int main(int argc, char ** argv){
 	init_datastructures();
 
 	//-------------------------- go to the paths inode -------------------------//
-	int return_val = delete_file(path, 0);
+	int return_val = delete_file(path, rm_dir);
 
 	//------------------------- set the inode to be free -----------------------//
 
@@ -45,28 +56,36 @@ int delete_file(char * path, int rm_dir){
 
 	unsigned int file_inode_no = path_walk(path);
 	if (file_inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return file_inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	struct ext2_inode * rm_inode = (struct ext2_inode *) inode_table + (file_inode_no - 1);
 	if ((rm_dir == 0) && (rm_inode->i_mode & EXT2_S_IFDIR))
 	{
-		fprintf(stderr, "Error: File is a Directory\n");
+		fprintf(stderr, "Error: File is a directory. Use -r to remove directory\n");
 		return EISDIR;
 	}
 
 	unsigned int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return dir_inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
+	// Clear the inode's attributes to be the default
+	if(rm_dir) {
+		struct ext2_inode * file_to_rm_inode = inode_table + (file_inode_no - 1);
+		if (!(file_to_rm_inode->i_mode & EXT2_S_IFDIR)) {
+			fprintf(stderr, "Error: File not a directory\n");
+			return ENOTDIR;
+		}
+	}
 
 	LOG(DEBUG_LEVEL0, "before removing\n");
 	int return_val = check_directory(file, dir_inode_no, rm_dir, &rm_entry_from_block);
 	if (return_val == -1) {
-		fprintf(stderr, "File not found\n");
+		fprintf(stderr, "Error: No such file or directory\n");
 		return ENOENT;
 	}
 	LOG(DEBUG_LEVEL0, "finish removing\n");
@@ -87,12 +106,24 @@ int rm_inode(int dir_inode_no){
 	int is_dir = (dir_inode->i_mode & EXT2_S_IFDIR);
 
 	for (int i = 0; i < 12; i++) { //Direct blocks
+		if (is_dir) {
+			int r_value = get_all_entries(dir_inode_no, dir_iblocks, i);
+			if (r_value < 0){
+				return r_value;
+			}
+		}
 		free_spot(block_bitmap, dir_iblocks[i]);
 	}
 
 	unsigned int * singly_indirect_block = (unsigned int *)(disk + dir_iblocks[12] * block_size);
 	if (dir_iblocks[12]) {
 		for (int i = 0; i < 256; i++) {
+			if (is_dir) {
+				int r_value = get_all_entries(dir_inode_no, singly_indirect_block, i);
+				if (r_value < 0){
+					return r_value;
+				}
+			}
 			free_spot(block_bitmap, singly_indirect_block[i]);
 		}
 		free_spot(block_bitmap, dir_iblocks[12]);
@@ -105,6 +136,12 @@ int rm_inode(int dir_inode_no){
 			singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[i] * block_size);
 			if (doubly_indirect_block[i]) {
 				for (int j = 0; j < 257; j++) {
+					if (is_dir) {
+					int r_value = get_all_entries(dir_inode_no, singly_indirect_block, j);
+						if (r_value < 0){
+							return r_value;
+						}
+					}
 					free_spot(block_bitmap, singly_indirect_block[j]);
 				}
 				free_spot(block_bitmap, doubly_indirect_block[i]);
@@ -124,6 +161,12 @@ int rm_inode(int dir_inode_no){
 					singly_indirect_block = (unsigned int *)(disk + doubly_indirect_block[j] * block_size);
 					if (doubly_indirect_block[j]) {
 						for (int k = 0; k < 257; k++) {
+							if (is_dir){
+								int r_value = get_all_entries(dir_inode_no, singly_indirect_block, k);
+								if (r_value < 0){
+									return r_value;
+								}
+							}
 							free_spot(block_bitmap, singly_indirect_block[k]);
 						}
 						free_spot(block_bitmap, doubly_indirect_block[j]);
@@ -138,6 +181,56 @@ int rm_inode(int dir_inode_no){
 	dir_inode->i_blocks = 0;
 	free_spot(inode_bitmap, dir_inode_no);
 	return 0;
+}
+
+/*
+ * Gets all entries in the current block
+ */
+int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int idx){
+	int r_value;
+	int check_idx = 0;
+	int check_inode_no;
+	char name[EXT2_NAME_LEN];
+	if (dir_iblocks[idx]) {
+		while (check_idx < EXT2_BLOCK_SIZE) {
+			check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name);
+
+			if (check_inode_no) {
+				struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
+				if(check_inode->i_mode & EXT2_S_IFDIR) {
+					r_value = rm_inode(check_inode_no);
+					(descriptor->bg_used_dirs_count)--;
+				}
+				check_directory(name, dir_inode_no, 1, &rm_entry_from_block);
+			}
+		}
+	}
+	return 0;
+}
+
+/*
+ * Return the current entry's inode
+ */
+int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name) {
+	int return_val = 0;
+	struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+	current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
+	if (current_entry->inode) {
+
+		strncpy(name, current_entry->name, current_entry->name_len);
+		name[current_entry->name_len] = '\0';
+		// If the entry is not the current and the previous
+		if (!strcmp(name, ".") || !strcmp(name, "..")) {
+			inode_table[current_entry->inode - 1].i_links_count--;
+		} else {
+			return_val = current_entry->inode;
+		}
+	}
+
+	// Set the next index
+	*check_idx += current_entry->rec_len;
+
+	return return_val;
 }
 
 

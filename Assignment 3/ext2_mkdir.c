@@ -3,8 +3,9 @@
 
 int main(int argc, char ** argv) {
 	if (argc != 3) {
-		fprintf(stderr, "mkdir requires 2 args\n");
-		return ENOENT;
+		fprintf(stderr, "Error: Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Usage: ext2_mkdir <disk.img> <dir_path>\n");
+		return EINVAL;
 	}
 
 	char * virtual_disk = argv[1];

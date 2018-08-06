@@ -1,22 +1,10 @@
 #include "ext2.h"
 
-/*
- * This program takes three command line arguments. The first is the name of an
- * ext2 formatted virtual disk. The other two are absolute paths on your ext2
- * formatted disk. The program should work like ln, creating a link from the
- * first specified file to the second specified path. If the source file does
- * not exist (ENOENT), if the link name already exists (EEXIST), or if either
- * location refers to a directory (EISDIR), then your program should return the
- * appropriate error. Note that this version of ln only works with files.
- * Additionally, this command may take a "-s" flag, after the disk image argument.
- * When this flag is used, your program must create a symlink instead (other
- * arguments remain the same).
- */
-
 int main(int argc, char ** argv){
 	if (argc < 4 || argc > 5) {
-		fprintf(stderr, "Requires 3 args\n");
-		exit(1);
+		fprintf(stderr, "Error: Missing parameters. It requires 3 parameters\n");
+		fprintf(stderr, "Usage: ext2_ln <disk.img> [-s] <src_file> <target_file>\n");
+		return EINVAL;
 	}
 
 	int file_type = EXT2_FT_REG_FILE;
@@ -31,8 +19,8 @@ int main(int argc, char ** argv){
 		link_path = argv[3];
 		file_path = argv[4];
 	} else {
-		fprintf(stderr, "unknown flag specified\n");
-		return ENOENT;
+		fprintf(stderr, "Error: Unknown flag specified\n");
+		return EINVAL;
 	}
 
 
@@ -45,19 +33,19 @@ int main(int argc, char ** argv){
 	//---------------------- create the symbolic link file ---------------------//
 
 	if (link_path[strlen(link_path) - 1] == '/') {
-		fprintf(stderr, "Cannot create directory link\n");
+		fprintf(stderr, "Error: Cannot create directory link\n");
 		return EISDIR;
 	}
 
-	// Chek to see if the link to refers to a directory
+	// Check to see if the link to refers to a directory
 	int inode_no = path_walk(file_path);
 	if (inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
-		fprintf(stderr, "Cannot link to a directory\n");
+		fprintf(stderr, "Error: Cannot link to a directory\n");
 		return EISDIR;
 	}
 
