@@ -17,7 +17,7 @@ int main(int argc, char ** argv){
 	unsigned char* virtual_disk = NULL;
 	char * path = NULL;
 	//check if flag -a not specified
-	virtual_disk = argv[1];
+	virtual_disk = (unsigned char*) argv[1];
 	path = argv[2];
 
 

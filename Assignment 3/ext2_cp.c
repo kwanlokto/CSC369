@@ -146,7 +146,7 @@ int write_file(char *buf, int inode_no) {
 	take_spot(block_bitmap, block_no);
 	print_bitmap(b_bitmap_size, block_bitmap);
 
-	LOG(DEBUG_LEVEL0, "size of buf %d\n", strlen(buf));
+	LOG(DEBUG_LEVEL0, "size of buf %d\n", (int)strlen(buf));
 
 	struct ext2_inode * inode = inode_table + (inode_no - 1);
 	inode->i_size += strlen(buf);

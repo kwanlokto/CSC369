@@ -8,7 +8,7 @@ int main(int argc, char ** argv){
 	}
 
 	int file_type = EXT2_FT_REG_FILE;
-	char * virtual_disk = argv[1];
+	unsigned char * virtual_disk = (unsigned char*)argv[1];
 	char * link_path;
 	char * file_path;
 	if (argc == 4){
