@@ -8,7 +8,7 @@ int main(int argc, char ** argv) {
 		return EINVAL;
 	}
 
-	char * virtual_disk = argv[1];
+	unsigned char * virtual_disk = (unsigned char*)argv[1];
 	char * path = argv[2];
 
 	//----------------------------- open the image -----------------------------//

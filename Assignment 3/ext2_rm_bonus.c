@@ -21,11 +21,11 @@ int main(int argc, char ** argv){
 	int rm_dir = 0;
 	//check if flag -a not specified
 	if (argc == 3) {
-		virtual_disk = argv[1];
+		virtual_disk = (unsigned char*)argv[1];
 		path = argv[2];
 	} else if (!strcmp(argv[2], "-r")){
 		rm_dir = 1;
-		virtual_disk = argv[1];
+		virtual_disk = (unsigned char*)argv[1];
 		path = argv[3];
 	} else {
 		fprintf(stderr, "Error: Unknown flag specified");
