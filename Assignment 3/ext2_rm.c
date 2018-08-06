@@ -71,9 +71,6 @@ int delete_file(char * path, int rm_dir){
 	}
 	LOG(DEBUG_LEVEL0, "finish removing\n");
 
-	// Free the file from the bitmap
-	free_spot(inode_bitmap, file_inode_no);
-
 	return 0;
 }
 
@@ -84,7 +81,6 @@ int delete_file(char * path, int rm_dir){
 int rm_inode(int dir_inode_no){
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 	unsigned int * dir_iblocks = dir_inode->i_block;
-	int is_dir = (dir_inode->i_mode & EXT2_S_IFDIR);
 
 	for (int i = 0; i < 12; i++) { //Direct blocks
 		free_spot(block_bitmap, dir_iblocks[i]);
@@ -188,7 +184,7 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 			(curr_inode->i_links_count)--;
 			//If no more links to this inode remove it
 			//Or if this inode is for a directory remove it
-			if (!curr_inode->i_links_count || curr_inode->i_mode & EXT2_S_IFDIR) {
+			if (!curr_inode->i_links_count) {
 				curr_inode->i_dtime = 1;
 				curr_inode->i_size = 0;
 				curr_inode->i_blocks = 0;
