@@ -170,12 +170,10 @@ int path_walk(char * path) {
 		name[name_idx] = '\0';
 		inode_no = check_directory(name, inode_no, 0, &check_entry);
 		if (inode_no == -1) {
-			//fprintf(stderr, "Path does not exist\n");
 			return -ENOENT;
 		}
 		curr = inode_table + (inode_no - 1);
 		if (!(curr->i_mode & EXT2_S_IFDIR) && is_dir) {
-			//fprintf(stderr, "That is not a directory\n");
 			return -ENOENT;
 		}
 
@@ -206,8 +204,8 @@ int check_directory(char * name, unsigned int inode_no, int flag, int (*fun_ptr)
 	int j = 0;
 	int k = 0;
 	if (!inode_block[index]) {
-		fprintf(stderr, "something wrong with pathwalk, curr == 0\n");
-		exit(1);
+		fprintf(stderr, "Error: Current inode is 0\n");
+		exit(EINVAL);
 	}
 
 	while (index < 15) {
@@ -448,8 +446,8 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
 		if (idx < 0) { //If there is no space in the previous block
 			int singly_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 			if (singly_block_no == -ENOMEM) {
-				fprintf(stderr, "no space in block bitmap\n");
-				exit(1);
+				fprintf(stderr, "Error: No space in block bitmap\n");
+				exit(ENOMEM);
 			}
 			take_spot(block_bitmap, singly_block_no);
 			block[block_idx] = singly_block_no;
@@ -472,28 +470,27 @@ int add_entry(unsigned int * block, int block_idx, char * name, int file_type) {
  */
 int create_file(char * path, int file_type, char * link_to) {
 	char file[EXT2_NAME_LEN];
-	//char dir[strlen(path)];
 	char dir[EXT2_PATH_LEN] = "/";
 	split_path(path, file, dir);
 	LOG(DEBUG_LEVEL0, "path: %s, file: %s, dir: %s\n", path, file, dir);
 
 	int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return dir_inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	// Checks to see if the file already exists
 	unsigned int check_exist = check_directory(file, dir_inode_no, 0, &check_entry);
 	if (check_exist != -1) {
-			fprintf(stderr, "File with the same name exists\n");
+			fprintf(stderr, "Error: File already exists\n");
 			return EEXIST;
 	}
 
 	// add the inode to the dir_inode i_block and get the block_no
 	unsigned int block_no = check_directory(file, dir_inode_no, file_type, &add_entry);
 	if (block_no == -1) {
-		fprintf(stderr, "Unable to create file\n");
+		fprintf(stderr, "Error: Unable to create file\n");
 		return EINVAL;
 	}
 
@@ -645,8 +642,8 @@ void take_spot(unsigned char * bitmap, int index) {
 	int bit_map_byte = index / 8;
 	int bit_order = index % 8;
 	if ((bitmap[bit_map_byte] >> bit_order) & 1) {
-		fprintf(stderr, "trying to write to a taken spot\n");
-		exit(1);
+		fprintf(stderr, "Error: Spot is already taken\n");
+		exit(EINVAL);
 	}
 	bitmap[bit_map_byte] = bitmap[bit_map_byte] | (1 << bit_order);
 	if (bitmap == inode_bitmap) {
@@ -700,8 +697,8 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	// Creates the inode for this directory
 	int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
 	if (new_inode_no == -ENOMEM) {
-		fprintf(stderr, "no space in inode bitmap\n");
-		exit(1);
+		fprintf(stderr, "Error: No space in inode bitmap\n");
+		exit(ENOMEM);
 	}
 	take_spot(inode_bitmap, new_inode_no);
 	create_inode(new_inode_no);
@@ -710,8 +707,8 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	int idx = find_entry(block_no, name);
 	if (idx == -1) {
-		fprintf(stderr, "could not find entry\n Should not be here!! \n");
-		exit(1);
+		fprintf(stderr, "Error: Added entry could not be found\n");
+		exit(EINVAL);
 	}
 	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 	i_entry->inode = new_inode_no;
@@ -725,8 +722,8 @@ int init_dir(int block_no, int parent_inode_no, char * name) {
 	(dir_inode->i_links_count)++;
 	int new_block_no = search_bitmap(block_bitmap, b_bitmap_size);
 	if (new_block_no == -ENOMEM) {
-		fprintf(stderr, "no space in block bitmap\n");
-		exit(1);
+		fprintf(stderr, "Error: No space in block bitmap\n");
+		exit(ENOMEM);
 	}
 	take_spot(block_bitmap, new_block_no);
 	(dir_inode->i_block)[0] = new_block_no;
@@ -758,8 +755,8 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 
 	int idx = find_entry(block_no, name);
 	if (idx == -1) {
-		fprintf(stderr, "could not find entry\n Should not be here!! \n");
-		exit(1);
+		fprintf(stderr, "Error: Added entry could not be found\n");
+		exit(EINVAL);
 	}
 	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 
@@ -779,8 +776,8 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		// Creates the inode for this directory
 		int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
 		if (new_inode_no == -ENOMEM) {
-			fprintf(stderr, "no space in inode bitmap\n");
-			exit(1);
+			fprintf(stderr, "Error: No space in inode bitmap\n");
+			exit(ENOMEM);
 		}
 		take_spot(inode_bitmap, new_inode_no);
 		create_inode(new_inode_no);
@@ -801,7 +798,7 @@ int init_link(int block_no, char * name, int file_type, char * link_to) {
 		// Create the new block
 		int block_no = search_bitmap(block_bitmap, b_bitmap_size);
 		if (block_no == -ENOMEM) {
-			fprintf(stderr, "no space in block bitmap\n");
+			fprintf(stderr, "Error: No space in block bitmap\n");
 			exit(ENOMEM);
 		}
 		take_spot(block_bitmap, block_no);
@@ -839,7 +836,7 @@ int init_reg(int block_no, char * name){
 	// Creates the inode for this directory
 	int new_inode_no = search_bitmap(inode_bitmap, i_bitmap_size);
 	if (new_inode_no == -ENOMEM) {
-		fprintf(stderr, "no space in inode bitmap\n");
+		fprintf(stderr, "Error: No space in inode bitmap\n");
 		return ENOMEM;
 	}
 	take_spot(inode_bitmap, new_inode_no);
@@ -849,8 +846,8 @@ int init_reg(int block_no, char * name){
 
 	int idx = find_entry(block_no, name);
 	if (idx == -1) {
-		fprintf(stderr, "could not find entry\n Should not be here!! \n");
-		return EINVAL;
+		fprintf(stderr, "Error: Added entry could not be found\n");
+		exit(EINVAL);
 	}
 	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 	i_entry->inode = new_inode_no;

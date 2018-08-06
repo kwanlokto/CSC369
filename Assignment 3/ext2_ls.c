@@ -9,8 +9,9 @@ extern unsigned char * disk;
 int main(int argc, char ** argv){
 	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	if (argc < 3 || argc > 4){
-		fprintf(stderr, "ls command requires 2 arguments\n");
-		exit(1);
+		fprintf(stderr, "Error Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Usage: ext2_ls <disk.img> [-a] <path>\n");
+		return EINVAL;
 	}
 
 	// ------------------------ convert the arguments -----------------------//
@@ -26,8 +27,8 @@ int main(int argc, char ** argv){
 		virtual_disk = (unsigned char*)argv[1];
 		path = argv[3];
 	} else {
-		fprintf(stderr, "unknown flag specified\n");
-		return ENOENT;
+		fprintf(stderr, "Error: Unknown flag specified\n");
+		return EINVAL;
 	}
 
 	//---------------------------- open the image ---------------------------//
@@ -39,7 +40,8 @@ int main(int argc, char ** argv){
 	//---------------------------- go to the paths inode ----------------------//
 	int inode_no = path_walk(path);
 	if (inode_no == -ENOENT) {
-		return inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	//----------------- PRINT ALL FILES LISTED IN THAT DIRECTORY ---------------//
@@ -53,7 +55,7 @@ int main(int argc, char ** argv){
 	}
 	int return_val = check_directory(NULL, inode_no, check_all, &print_file);
 	if (return_val != -1) {
-		fprintf(stderr, "Didn't print all files\n");
+		fprintf(stderr, "Error: Unable to print all files\n");
 		return ENOENT;
 	}
 	close_image(disk);

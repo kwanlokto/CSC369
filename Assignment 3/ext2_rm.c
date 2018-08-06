@@ -9,8 +9,9 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 
 int main(int argc, char ** argv){
 	if (argc < 3 || argc > 4){
-		fprintf(stderr, "rm command requires at least 2 arguments\n");
-		exit(1);
+		fprintf(stderr, "Error Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Usage: ext2_rm <disk.img> [-r] <file_path>\n");
+		return EINVAL;
 	}
 
 
