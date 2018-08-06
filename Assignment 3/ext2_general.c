@@ -855,7 +855,8 @@ int init_reg(int block_no, char * name){
 	}
 	i_entry = (struct ext2_dir_entry_2 *)((char*) i_entry + idx);
 	i_entry->inode = new_inode_no;
-	//reg_inode->i_mode = reg_inode->i_mode | EXT2_S_IFREG;
+	struct ext2_inode *inode = inode_table + (new_inode_no - 1);
+	inode->i_mode = EXT2_S_IFREG;
 	return 0;
 }
 
