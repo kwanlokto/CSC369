@@ -17,11 +17,11 @@ int main(int argc, char ** argv){
 
 	unsigned char * virtual_disk = (unsigned char *)argv[1];
 	char * file_path = argv[2];
-	char * dir_path = argv[3] = "/";
+	char * dir_path = argv[3];
 	char dest_path[EXT2_PATH_LEN];
 	char dest_file[EXT2_NAME_LEN];
 	char dest_path_file[EXT2_PATH_LEN];
-	char src_path[EXT2_PATH_LEN];
+	char src_path[EXT2_PATH_LEN] = "/";
 	int ret = 0;
 
 	// Error checking on the 2nd and 3rd argument making sure that they
