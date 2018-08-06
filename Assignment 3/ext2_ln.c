@@ -2,7 +2,7 @@
 
 int main(int argc, char ** argv){
 	if (argc < 4 || argc > 5) {
-		fprintf(stderr, "Error Missing parameters. It requires 3 parameters\n");
+		fprintf(stderr, "Error: Missing parameters. It requires 3 parameters\n");
 		fprintf(stderr, "Usage: ext2_ln <disk.img> [-s] <src_file> <target_file>\n");
 		return EINVAL;
 	}

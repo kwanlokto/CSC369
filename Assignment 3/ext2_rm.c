@@ -4,7 +4,6 @@ extern unsigned char * disk;
 int rm_entry_from_block(unsigned int * block, int block_idx, char * null, int rm_inode);
 int delete_file(char * path, int rm_dir);
 int rm_inode(int dir_inode_no);
-int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name);
 
 int main(int argc, char ** argv){
 	if (argc != 3){
@@ -139,31 +138,6 @@ int rm_inode(int dir_inode_no){
 	dir_inode->i_blocks = 0;
 	free_spot(inode_bitmap, dir_inode_no);
 	return 0;
-}
-
-/*
- * Return the current entry's inode
- */
-int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name) {
-	int return_val = 0;
-	struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-	current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
-	if (current_entry->inode) {
-
-		strncpy(name, current_entry->name, current_entry->name_len);
-		name[current_entry->name_len] = '\0';
-		// If the entry is not the current and the previous
-		if (!strcmp(name, ".") || !strcmp(name, "..")) {
-			inode_table[current_entry->inode - 1].i_links_count--;
-		} else {
-			return_val = current_entry->inode;
-		}
-	}
-
-	// Set the next index
-	*check_idx += current_entry->rec_len;
-
-	return return_val;
 }
 
 

@@ -9,7 +9,7 @@ extern unsigned char * disk;
 int main(int argc, char ** argv){
 	TRACE(DEBUG_LEVEL0, "%s\n", __func__);
 	if (argc < 3 || argc > 4){
-		fprintf(stderr, "Error Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Error: Missing parameters. It requires 2 parameters\n");
 		fprintf(stderr, "Usage: ext2_ls <disk.img> [-a] <path>\n");
 		return EINVAL;
 	}
