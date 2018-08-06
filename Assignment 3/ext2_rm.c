@@ -8,7 +8,7 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 
 int main(int argc, char ** argv){
 	if (argc != 3){
-		fprintf(stderr, "Error Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Error: Missing parameters. It requires 2 parameters\n");
 		fprintf(stderr, "Usage: ext2_rm <disk.img> <file_path>\n");
 		return EINVAL;
 	}
@@ -83,7 +83,6 @@ int delete_file(char * path, int rm_dir){
  * Returns 0 if sucessful and other values if unsucessful
  */
 int rm_inode(int dir_inode_no){
-	printf("dir inode %d\n", dir_inode_no);
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 	unsigned int * dir_iblocks = dir_inode->i_block;
 	int is_dir = (dir_inode->i_mode & EXT2_S_IFDIR);
@@ -149,18 +148,14 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 	int return_val = 0;
 	struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
-	printf("in block_no %d\n", block_no);
 	if (current_entry->inode) {
 
 		strncpy(name, current_entry->name, current_entry->name_len);
 		name[current_entry->name_len] = '\0';
-		printf("name %s\n", name);
 		// If the entry is not the current and the previous
 		if (!strcmp(name, ".") || !strcmp(name, "..")) {
-			printf("here\n");
 			inode_table[current_entry->inode - 1].i_links_count--;
 		} else {
-			printf("enter %s\n",name);
 			return_val = current_entry->inode;
 		}
 	}

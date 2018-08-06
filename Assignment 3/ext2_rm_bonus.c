@@ -9,7 +9,7 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 
 int main(int argc, char ** argv){
 	if (argc < 3 || argc > 4){
-		fprintf(stderr, "Error Missing parameters. It requires 2 parameters\n");
+		fprintf(stderr, "Error: Missing parameters. It requires 2 parameters\n");
 		fprintf(stderr, "Usage: ext2_rm <disk.img> [-r] <file_path>\n");
 		return EINVAL;
 	}
@@ -28,7 +28,7 @@ int main(int argc, char ** argv){
 		virtual_disk = argv[1];
 		path = argv[3];
 	} else {
-		fprintf(stderr, "unknown flag specified");
+		fprintf(stderr, "Error: Unknown flag specified");
 		return EINVAL;
 	}
 
@@ -85,7 +85,7 @@ int delete_file(char * path, int rm_dir){
 	LOG(DEBUG_LEVEL0, "before removing\n");
 	int return_val = check_directory(file, dir_inode_no, rm_dir, &rm_entry_from_block);
 	if (return_val == -1) {
-		fprintf(stderr, "File not found\n");
+		fprintf(stderr, "Error: No such file or directory\n");
 		return ENOENT;
 	}
 	LOG(DEBUG_LEVEL0, "finish removing\n");
@@ -101,7 +101,6 @@ int delete_file(char * path, int rm_dir){
  * Returns 0 if sucessful and other values if unsucessful
  */
 int rm_inode(int dir_inode_no){
-	printf("dir inode %d\n", dir_inode_no);
 	struct ext2_inode * dir_inode = inode_table + (dir_inode_no - 1);
 	unsigned int * dir_iblocks = dir_inode->i_block;
 	int is_dir = (dir_inode->i_mode & EXT2_S_IFDIR);
@@ -194,16 +193,11 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
 	char name[EXT2_NAME_LEN];
 	if (dir_iblocks[idx]) {
 		while (check_idx < EXT2_BLOCK_SIZE) {
-			if (check_idx) {
-				printf("check_idx %d\n", check_idx);
-			}
 			check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name);
 
 			if (check_inode_no) {
-				printf("inode check %d\n", check_inode_no);
 				struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
 				if(check_inode->i_mode & EXT2_S_IFDIR) {
-					printf("rm next directory\n");
 					r_value = rm_inode(check_inode_no);
 					(descriptor->bg_used_dirs_count)--;
 				}
@@ -221,18 +215,14 @@ int get_current_entry_inode(unsigned int block_no, int * check_idx, char * name)
 	int return_val = 0;
 	struct ext2_dir_entry_2 * current_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 	current_entry =(struct ext2_dir_entry_2 *) ((char *) current_entry + *check_idx);
-	printf("in block_no %d\n", block_no);
 	if (current_entry->inode) {
 
 		strncpy(name, current_entry->name, current_entry->name_len);
 		name[current_entry->name_len] = '\0';
-		printf("name %s\n", name);
 		// If the entry is not the current and the previous
 		if (!strcmp(name, ".") || !strcmp(name, "..")) {
-			printf("here\n");
 			inode_table[current_entry->inode - 1].i_links_count--;
 		} else {
-			printf("enter %s\n",name);
 			return_val = current_entry->inode;
 		}
 	}
