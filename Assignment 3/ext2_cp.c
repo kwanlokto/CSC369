@@ -91,6 +91,11 @@ int main(int argc, char ** argv){
 		}
 		else
 		{
+			fprintf(stderr, "File already exists\n");
+			ret = EEXIST;
+			goto adr_exit;
+
+			/*
 			//file already exist in file_inode_no
 			//deallocate blocks
 			struct ext2_inode * file_inode = inode_table + (file_inode_no - 1);
@@ -101,6 +106,7 @@ int main(int argc, char ** argv){
 			file_inode->i_dtime = 0; // remove deletion time
 			file_inode->i_links_count = 1;
 			file_inode->i_blocks = 0;
+			*/
 		}
 		//allocate blocks and copy data
 		memset(buf, 0, sizeof(buf));
