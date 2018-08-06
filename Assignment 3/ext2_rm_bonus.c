@@ -282,7 +282,7 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 			//If no more links to this inode remove it
 			//Or if this inode is for a directory remove it
 			if (!curr_inode->i_links_count || curr_inode->i_mode & EXT2_S_IFDIR) {
-				curr_inode->i_dtime = 1;
+				curr_inode->i_dtime = get_curr_time();
 				curr_inode->i_size = 0;
 				curr_inode->i_blocks = 0;
 				rm_inode(curr_entry->inode);
@@ -295,4 +295,20 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		//prev_block_no = block_no;
 	}
 	return -1;
+}
+
+unsigned int get_curr_time(){
+    time_t     now;
+    struct tm  ts;
+    //char * buf = bu;
+
+    // Get current time
+    time(&now);
+
+    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
+    ts = *localtime(&now);
+		//t_of_day = mktime(&ts);
+    //printf("seconds since the Epoch: %ld\n", (unsigned int) now);
+
+    return (unsigned int)now;
 }

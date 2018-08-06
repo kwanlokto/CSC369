@@ -45,8 +45,8 @@ int delete_file(char * path, int rm_dir){
 
 	unsigned int file_inode_no = path_walk(path);
 	if (file_inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return file_inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	struct ext2_inode * rm_inode = (struct ext2_inode *) inode_table + (file_inode_no - 1);
@@ -58,15 +58,15 @@ int delete_file(char * path, int rm_dir){
 
 	unsigned int dir_inode_no = path_walk(dir);
 	if (dir_inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return dir_inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 
 	LOG(DEBUG_LEVEL0, "before removing\n");
 	int return_val = check_directory(file, dir_inode_no, rm_dir, &rm_entry_from_block);
 	if (return_val == -1) {
-		fprintf(stderr, "File not found\n");
+		fprintf(stderr, "Error: No such file or directory\n");
 		return ENOENT;
 	}
 	LOG(DEBUG_LEVEL0, "finish removing\n");
@@ -211,7 +211,7 @@ unsigned int get_curr_time(){
     // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
     ts = *localtime(&now);
 		//t_of_day = mktime(&ts);
-    printf("seconds since the Epoch: %ld\n", (unsigned int) now);
+    //printf("seconds since the Epoch: %ld\n", (unsigned int) now);
 
     return (unsigned int)now;
 }
