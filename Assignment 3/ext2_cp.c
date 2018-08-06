@@ -91,16 +91,8 @@ int main(int argc, char ** argv){
 		}
 		else
 		{
-			//file already exist in file_inode_no
-			//deallocate blocks
-			struct ext2_inode * file_inode = inode_table + (file_inode_no - 1);
-			for (int i = 0; i < 15; i++) {
-				free_spot(block_bitmap, file_inode->i_block[i]);
-				file_inode->i_block[i] = 0;
-			}
-			file_inode->i_dtime = 0; // remove deletion time
-			file_inode->i_links_count = 1;
-			file_inode->i_blocks = 0;
+			fprintf("File already exists\n");
+			return EEXIST;
 		}
 		//allocate blocks and copy data
 		memset(buf, 0, sizeof(buf));
