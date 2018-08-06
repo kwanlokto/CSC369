@@ -33,19 +33,19 @@ int main(int argc, char ** argv){
 	//---------------------- create the symbolic link file ---------------------//
 
 	if (link_path[strlen(link_path) - 1] == '/') {
-		fprintf(stderr, "Cannot create directory link\n");
+		fprintf(stderr, "Error: Cannot create directory link\n");
 		return EISDIR;
 	}
 
-	// Chek to see if the link to refers to a directory
+	// Check to see if the link to refers to a directory
 	int inode_no = path_walk(file_path);
 	if (inode_no == -ENOENT) {
-		fprintf(stderr, "Path does not exist\n");
-		return inode_no * -1;
+		fprintf(stderr, "Error: No such file or directory\n");
+		return ENOENT;
 	}
 
 	if (inode_table[inode_no - 1].i_mode & EXT2_S_IFDIR) {
-		fprintf(stderr, "Cannot link to a directory\n");
+		fprintf(stderr, "Error: Cannot link to a directory\n");
 		return EISDIR;
 	}
 
