@@ -73,14 +73,17 @@ int delete_file(char * path, int rm_dir){
 		return ENOENT;
 	}
 
+	// if (!(rm_inode->i_mode & EXT2_S_IFDIR)) {
+	// 	(rm_inode->i_links_count)--;
+	// }
 	// Clear the inode's attributes to be the default
-	if(rm_dir) {
-		struct ext2_inode * file_to_rm_inode = inode_table + (file_inode_no - 1);
-		if (!(file_to_rm_inode->i_mode & EXT2_S_IFDIR)) {
-			fprintf(stderr, "Error: File not a directory\n");
-			return ENOTDIR;
-		}
-	}
+	// if(rm_dir) {
+	// 	struct ext2_inode * file_to_rm_inode = inode_table + (file_inode_no - 1);
+	// 	if (!(file_to_rm_inode->i_mode & EXT2_S_IFDIR)) {
+	// 		fprintf(stderr, "Error: File not a directory\n");
+	// 		return ENOTDIR;
+	// 	}
+	// }
 
 	LOG(DEBUG_LEVEL0, "before removing\n");
 	int return_val = check_directory(file, dir_inode_no, rm_dir, &rm_entry_from_block);
@@ -180,6 +183,9 @@ int rm_inode(int dir_inode_no){
 
 	dir_inode->i_blocks = 0;
 	free_spot(inode_bitmap, dir_inode_no);
+	if (is_dir) {
+		descriptor->bg_used_dirs_count--;
+	}
 	return 0;
 }
 
@@ -196,11 +202,10 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
 			check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name);
 
 			if (check_inode_no) {
-				struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
-				if(check_inode->i_mode & EXT2_S_IFDIR) {
-					r_value = rm_inode(check_inode_no);
-					(descriptor->bg_used_dirs_count)--;
-				}
+				//struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
+				// if(check_inode->i_mode & EXT2_S_IFDIR) {
+				// 	r_value = rm_inode(check_inode_no);
+				// }
 				check_directory(name, dir_inode_no, 1, &rm_entry_from_block);
 			}
 		}
@@ -245,18 +250,21 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		struct ext2_dir_entry_2 * i_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
 
 		int count = 0;
-		int prev_count = 0;
+		int prev_count = -1;
 		int new_rec_len = -1;
-		int idx = -1;
 
+		// Indexes for the entry we are deleting and previous entry
+		int curr_idx = -1;
+		int prev_idx = -1;
 		//traverse to the entry with the same inode
 		while (count < EXT2_BLOCK_SIZE) {
 			// Check to see if we have found the corresponding entry
 			char * curr_name = get_name(i_entry->name, i_entry->name_len);
 			LOG(DEBUG_LEVEL0, "curr_name %s vs %s\n", curr_name, name);
 			if (!strcmp(curr_name, name)) {
-				idx = prev_count;
-				LOG(DEBUG_LEVEL0, "found entry wtih name %s at idx %d \n", name, idx);
+				prev_idx = prev_count;
+				curr_idx = count;
+				LOG(DEBUG_LEVEL0, "found entry wtih name %s at idx %d \n", name, curr_idx);
 				new_rec_len = (count - prev_count) + i_entry->rec_len;
 				count = EXT2_BLOCK_SIZE;
 			}
@@ -270,26 +278,41 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 
 		// If the entry is found
 		// If we are removing then entry at the start of the block
-		if (idx >= 0) {
+		if (curr_idx >= 0) {
 			struct ext2_dir_entry_2 * prev_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
-			prev_entry = (struct ext2_dir_entry_2 *)((char *)prev_entry + idx);
+			prev_entry = (struct ext2_dir_entry_2 *)((char *)prev_entry + prev_idx);
 
-			struct ext2_dir_entry_2 * curr_entry = (struct ext2_dir_entry_2 *)((char *)prev_entry + prev_entry->rec_len);
+			struct ext2_dir_entry_2 * curr_entry = (struct ext2_dir_entry_2 *)(disk + block_no * block_size);
+			curr_entry = (struct ext2_dir_entry_2 *)((char *)curr_entry + curr_idx);
 
 			struct ext2_inode * curr_inode = inode_table + (curr_entry->inode - 1);
 
+
 			(curr_inode->i_links_count)--;
+
 			//If no more links to this inode remove it
 			//Or if this inode is for a directory remove it
 			if (!curr_inode->i_links_count || curr_inode->i_mode & EXT2_S_IFDIR) {
+				//curr_inode->i_links_count = 0;
 				curr_inode->i_dtime = get_curr_time();
 				curr_inode->i_size = 0;
 				curr_inode->i_blocks = 0;
 				rm_inode(curr_entry->inode);
 			}
-			curr_entry->inode = 0;
-			curr_entry->name_len = 0;
-			prev_entry->rec_len = new_rec_len;
+
+			//curr_entry->name_len = 0?
+			//curr_entry->inode = 0 ?
+			if (prev_idx >= 0) {
+				prev_entry->rec_len = new_rec_len;
+			} else {
+				curr_entry->inode = 0;
+			}
+
+			// Add this
+			// If we are removing the first entry
+			if (!curr_entry && new_rec_len == EXT2_BLOCK_SIZE){
+				free_spot(block_bitmap, block_no);
+			}
 			return 0;
 		}
 		//prev_block_no = block_no;
