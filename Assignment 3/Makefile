@@ -1,5 +1,5 @@
 FLAGS = -Wall -g -std=gnu99
-FLAGS+=-DDEBUG_EN
+#FLAGS+=-DDEBUG_EN
 
 DEPENDENCIES = ext2.h
 

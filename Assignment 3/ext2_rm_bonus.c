@@ -193,7 +193,6 @@ int rm_inode(int dir_inode_no){
  * Gets all entries in the current block
  */
 int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int idx){
-	int r_value;
 	int check_idx = 0;
 	int check_inode_no;
 	char name[EXT2_NAME_LEN];
@@ -202,10 +201,6 @@ int get_all_entries(unsigned int dir_inode_no, unsigned int * dir_iblocks , int 
 			check_inode_no = get_current_entry_inode(dir_iblocks[idx], &check_idx, name);
 
 			if (check_inode_no) {
-				//struct ext2_inode * check_inode = inode_table + (check_inode_no - 1);
-				// if(check_inode->i_mode & EXT2_S_IFDIR) {
-				// 	r_value = rm_inode(check_inode_no);
-				// }
 				check_directory(name, dir_inode_no, 1, &rm_entry_from_block);
 			}
 		}
@@ -315,23 +310,6 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 			}
 			return 0;
 		}
-		//prev_block_no = block_no;
 	}
 	return -1;
-}
-
-unsigned int get_curr_time(){
-    time_t     now;
-    struct tm  ts;
-    //char * buf = bu;
-
-    // Get current time
-    time(&now);
-
-    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
-    ts = *localtime(&now);
-		//t_of_day = mktime(&ts);
-    //printf("seconds since the Epoch: %ld\n", (unsigned int) now);
-
-    return (unsigned int)now;
 }

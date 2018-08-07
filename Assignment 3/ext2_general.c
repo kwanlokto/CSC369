@@ -933,3 +933,18 @@ void set_i_blocks(int dir_inode_no) {
 
 	(dir_inode->i_blocks) = (dir_inode->i_blocks) * 2;
 }
+
+/*
+ * Get the current time
+ */
+unsigned int get_curr_time(){
+    time_t     now;
+    struct tm  ts;
+    // Get current time
+    time(&now);
+
+    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
+    ts = *localtime(&now);
+
+    return (unsigned int)now;
+}

@@ -16,7 +16,6 @@ int main(int argc, char ** argv){
 	// ------------------------ convert the arguments -----------------------//
 	unsigned char* virtual_disk = NULL;
 	char * path = NULL;
-	//check if flag -a not specified
 	virtual_disk = (unsigned char*) argv[1];
 	path = argv[2];
 
@@ -141,7 +140,6 @@ int rm_inode(int dir_inode_no){
  * Removes the entry with the same name as name
  */
 int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm_dir) {
-	//static int prev_block_no = 0;
 
 	int block_no = block[block_idx];
 	if (block_no != 0) {
@@ -198,20 +196,4 @@ int rm_entry_from_block(unsigned int * block, int block_idx, char * name, int rm
 		//prev_block_no = block_no;
 	}
 	return -1;
-}
-
-unsigned int get_curr_time(){
-    time_t     now;
-    struct tm  ts;
-    //char * buf = bu;
-
-    // Get current time
-    time(&now);
-
-    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
-    ts = *localtime(&now);
-		//t_of_day = mktime(&ts);
-    //printf("seconds since the Epoch: %ld\n", (unsigned int) now);
-
-    return (unsigned int)now;
 }
